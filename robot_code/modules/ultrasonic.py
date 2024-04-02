@@ -4,9 +4,9 @@ script_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
 from robot_code.code.config import config
-from servo import Servo
-from pwm import PWM
-from pin import Pin
+from robot_code.modules.servo import Servo
+from robot_code.modules.pwm import PWM
+from robot_code.modules.pin import Pin
 
 class Ultrasonic:
     """A class to control an ultrasonic sensor with servo for scanning."""
