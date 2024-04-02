@@ -49,9 +49,11 @@ class Robot:
         self.current_power = {key: power for key in self.motors}
 
     def backward(self, power=100):
-        # Adjusted for consistent backward movement
+        # Adjusted to ensure correct backward movement by inverting the direction logic
         for key, motor in self.motors.items():
+            # For backward movement, invert the power sign considering the motor's reverse flag
             motor.set_power(-power if not motor.is_reversed else power)
+        # Update current power tracking
         self.current_power = {key: -power for key in self.motors}
 
     def turn_left(self, power=100):
