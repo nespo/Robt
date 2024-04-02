@@ -1,4 +1,4 @@
-import curses, os, sys
+import curses, os, sys, time
 # Adjust the sys.path to include the parent directory of robot_code
 script_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(script_dir, '..', '..')
@@ -22,7 +22,8 @@ def main(window):
             if char == ord('q'):
                 break
             elif char == curses.KEY_UP or char == ord('w'):
-                robot.forward(100)
+                robot.forward(50)
+                time.sleep(1)
             elif char == curses.KEY_DOWN or char == ord('s'):
                 robot.backward(100)
             elif char == curses.KEY_LEFT or char == ord('a'):
