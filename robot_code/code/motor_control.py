@@ -56,10 +56,10 @@ class Robot:
     
     '''
     def forward(self, power):
-        self.motors["left_front"].set_power(power)
+        self.motors["left_front"].set_power(power/2)
         self.motors["left_rear"].set_power(power)
         self.motors["right_front"].set_power(power/2)
-        self.motors["right_rear"].set_power(power/2)
+        self.motors["right_rear"].set_power(power)
   
         
     def backward(self, power):
