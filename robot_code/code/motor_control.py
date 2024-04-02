@@ -1,12 +1,8 @@
-# motor_control.py
 import os, sys
-# Adjust the sys.path to include the parent directory of robot_code
-script_dir = os.path.dirname(__file__)
-parent_dir = os.path.join(script_dir, '..', '..')
-sys.path.append(os.path.abspath(parent_dir))
 from config import config
 from robot_code.modules.motor import Motor
 import RPi.GPIO as GPIO
+import time
 
 class Robot:
     def __init__(self, config):
@@ -25,64 +21,38 @@ class Robot:
                                 pin_dir=config["motors"]["right_rear"]["pin_dir"], 
                                 reverse=config["motors"]["right_rear"]["reverse"]),
         }
-        self.current_power = {key: 0 for key in self.motors}
 
-    def set_motor_power(self, label, power):
-        if label in self.motors:
-            self.motors[label].set_power(power)
-            self.current_power[label] = power
-
-    def adjust_motor_speed(self, motor_label, delta):
-        if motor_label in self.motors:
-            new_power = max(min(self.current_power[motor_label] + delta, 100), -100)
-            self.set_motor_power(motor_label, new_power)
-
-    def get_motor_power(self, motor_label):
-        if motor_label in self.current_power:
-            return self.current_power[motor_label]
-        return 0
+    def apply_motor_power(self, power, reverse=False):
+        for key, motor in self.motors.items():
+            direction_power = -power if (motor.is_reversed ^ reverse) else power
+            motor.set_power(direction_power)
 
     def forward(self, power=100):
-        # Adjusted for consistent forward movement
-        for key, motor in self.motors.items():
-            motor.set_power(power if not motor.is_reversed else -power)
-        self.current_power = {key: power for key in self.motors}
+        self.apply_motor_power(power)
 
     def backward(self, power=100):
-        # Adjusted to ensure correct backward movement by inverting the direction logic
-        for key, motor in self.motors.items():
-            # For backward movement, invert the power sign considering the motor's reverse flag
-            motor.set_power(-power if not motor.is_reversed else power)
-        # Update current power tracking
-        self.current_power = {key: -power for key in self.motors}
+        self.apply_motor_power(power, reverse=True)
 
-    def turn_left(self, power=100):
-        # Assuming left motors need to reverse to turn left
-        self.motors["left_front"].set_power(-power)
-        self.motors["left_rear"].set_power(-power)
+    def turn_left(self, power=100, pivot=False):
+        if pivot:  # Pivot turn
+            self.motors["left_front"].set_power(-power)
+            self.motors["left_rear"].set_power(-power)
+        else:  # Smooth turn
+            self.motors["left_front"].set_power(power // 2)
+            self.motors["left_rear"].set_power(power // 2)
         self.motors["right_front"].set_power(power)
         self.motors["right_rear"].set_power(power)
-        self.current_power = {
-            "left_front": -power,
-            "left_rear": -power,
-            "right_front": power,
-            "right_rear": power
-        }
 
-    def turn_right(self, power=100):
-        # Assuming right motors need to reverse to turn right
+    def turn_right(self, power=100, pivot=False):
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
-        self.motors["right_front"].set_power(-power)
-        self.motors["right_rear"].set_power(-power)
-        self.current_power = {
-            "left_front": power,
-            "left_rear": power,
-            "right_front": -power,
-            "right_rear": -power
-        }
+        if pivot:  # Pivot turn
+            self.motors["right_front"].set_power(-power)
+            self.motors["right_rear"].set_power(-power)
+        else:  # Smooth turn
+            self.motors["right_front"].set_power(power // 2)
+            self.motors["right_rear"].set_power(power // 2)
 
     def stop(self):
         for motor in self.motors.values():
             motor.set_power(0)
-        self.current_power = {key: 0 for key in self.motors}
