@@ -25,7 +25,6 @@ class Robot:
                                 pin_dir=config["motors"]["right_rear"]["pin_dir"], 
                                 reverse=config["motors"]["right_rear"]["reverse"]),
         }
-        # Initialize a dictionary to store current power levels for motors
         self.current_power = {key: 0 for key in self.motors}
 
     def set_motor_power(self, label, power):
@@ -35,7 +34,7 @@ class Robot:
 
     def adjust_motor_speed(self, motor_label, delta):
         if motor_label in self.motors:
-            new_power = max(min(self.current_power[motor_label] + delta, 100), -100)  # Ensure new power is between -100 and 100
+            new_power = max(min(self.current_power[motor_label] + delta, 100), -100)
             self.set_motor_power(motor_label, new_power)
 
     def get_motor_power(self, motor_label):
@@ -44,23 +43,23 @@ class Robot:
         return 0
 
     def forward(self, power=100):
-        for motor in self.motors.values():
-            motor.set_power(power)
-        # Update current power for all motors
+        # Adjusted for consistent forward movement
+        for key, motor in self.motors.items():
+            motor.set_power(power if not motor.is_reversed else -power)
         self.current_power = {key: power for key in self.motors}
 
     def backward(self, power=100):
-        for motor in self.motors.values():
-            motor.set_power(-power)
-        # Update current power for all motors
+        # Adjusted for consistent backward movement
+        for key, motor in self.motors.items():
+            motor.set_power(-power if not motor.is_reversed else power)
         self.current_power = {key: -power for key in self.motors}
 
     def turn_left(self, power=100):
+        # Assuming left motors need to reverse to turn left
         self.motors["left_front"].set_power(-power)
         self.motors["left_rear"].set_power(-power)
         self.motors["right_front"].set_power(power)
         self.motors["right_rear"].set_power(power)
-        # Update current power for motors
         self.current_power = {
             "left_front": -power,
             "left_rear": -power,
@@ -69,11 +68,11 @@ class Robot:
         }
 
     def turn_right(self, power=100):
+        # Assuming right motors need to reverse to turn right
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
         self.motors["right_front"].set_power(-power)
         self.motors["right_rear"].set_power(-power)
-        # Update current power for motors
         self.current_power = {
             "left_front": power,
             "left_rear": power,
@@ -84,5 +83,4 @@ class Robot:
     def stop(self):
         for motor in self.motors.values():
             motor.set_power(0)
-        # Reset current power for all motors
         self.current_power = {key: 0 for key in self.motors}
