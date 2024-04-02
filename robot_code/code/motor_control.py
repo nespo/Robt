@@ -44,14 +44,6 @@ class Robot:
         elif motor == "right_rear":
             self.motors["right_rear"].set_power(power)
 
-    def forward(self, power):
-        # Adjusted to respect the reversal of right motors
-        self.motors["left_front"].set_power(power)
-        self.motors["left_rear"].set_power(power)
-        # Reversing the right motors by inverting the power
-        self.motors["right_front"].set_power(-power)
-        self.motors["right_rear"].set_power(-power)
-
     # The rest of your methods remain unchanged
 
     '''      
@@ -62,13 +54,13 @@ class Robot:
         self.motors["left_rear"].set_power(left_power)
         self.motors["right_rear"].set_power(right_power)
     
-
+    '''
     def forward(self, power):
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
-        self.motors["right_front"].set_power(power)
-        self.motors["right_rear"].set_power(power)
-    '''
+        self.motors["right_front"].set_power(power/2)
+        self.motors["right_rear"].set_power(power/2)
+  
         
     def backward(self, power):
         self.motors["left_front"].set_power(-power)

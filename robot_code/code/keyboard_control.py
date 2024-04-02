@@ -22,8 +22,8 @@ def main(window):
             if char == ord('q'):
                 break
             elif char == curses.KEY_UP or char == ord('w'):
-                robot.forward(50)
-                time.sleep(1)
+                robot.forward(100)
+                #time.sleep(1)
             elif char == curses.KEY_DOWN or char == ord('s'):
                 robot.backward(100)
             elif char == curses.KEY_LEFT or char == ord('a'):
