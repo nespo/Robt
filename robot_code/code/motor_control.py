@@ -68,17 +68,22 @@ class Robot:
         self.motors["right_front"].set_power(power-10)
         self.motors["right_rear"].set_power(-power)
 
-    def turn_left(self, power):
-        self.motors["left_front"].set_power(-power)
-        self.motors["left_rear"].set_power(-power)
-        self.motors["right_front"].set_power(power)
-        self.motors["right_rear"].set_power(power)
+    def turn_left(self, power, turn_power_reduction=0.5):
+            # Inside motors are the left motors when turning left
+            inside_power = power * turn_power_reduction
+            self.motors["left_front"].set_power(-inside_power)
+            self.motors["left_rear"].set_power(-inside_power)
+            self.motors["right_front"].set_power(power)
+            self.motors["right_rear"].set_power(power)
 
-    def turn_right(self, power):
+    def turn_right(self, power, turn_power_reduction=0.5):
+        # Inside motors are the right motors when turning right
+        inside_power = power * turn_power_reduction
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
-        self.motors["right_front"].set_power(-power)
-        self.motors["right_rear"].set_power(-power)
+        self.motors["right_front"].set_power(-inside_power)
+        self.motors["right_rear"].set_power(-inside_power)
+
 
     def stop(self):
         self.motors["left_front"].set_power(0)
