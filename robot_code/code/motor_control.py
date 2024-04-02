@@ -1,4 +1,9 @@
+# motor_control.py
 import os, sys
+# Adjust the sys.path to include the parent directory of robot_code
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.join(script_dir, '..', '..')
+sys.path.append(os.path.abspath(parent_dir))
 from config import config
 from robot_code.modules.motor import Motor
 import RPi.GPIO as GPIO
