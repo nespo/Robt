@@ -30,20 +30,30 @@ class Robot:
         self.right_rear_speed = Speed(4)  
 
     def start_speed_thread(self):
-        # left_front_speed.start()
-        # right_front_speed.start()
         self.left_rear_speed.start()
         self.right_rear_speed.start()
 
     def set_motor_power(self, motor, power):
-        if motor == 1:
+        # Correctly call set_power for each motor
+        if motor == "left_front":
             self.motors["left_front"].set_power(power)
-        elif motor == 2:
-            self.motors["right_front"].set_power
-        elif motor == 3:
-            self.motors["left_rear"].set_power
-        elif motor == 4:
-            self.motors["right_rear"].set_power
+        elif motor == "right_front":
+            self.motors["right_front"].set_power(power)
+        elif motor == "left_rear":
+            self.motors["left_rear"].set_power(power)
+        elif motor == "right_rear":
+            self.motors["right_rear"].set_power(power)
+
+    def forward(self, power):
+        # Adjusted to respect the reversal of right motors
+        self.motors["left_front"].set_power(power)
+        self.motors["left_rear"].set_power(power)
+        # Reversing the right motors by inverting the power
+        self.motors["right_front"].set_power(-power)
+        self.motors["right_rear"].set_power(-power)
+
+    # The rest of your methods remain unchanged
+
     '''      
     def set_all_motor_power(self, left_power, right_power):
         """Set power for all motors for coordinated movement."""
@@ -51,14 +61,15 @@ class Robot:
         self.motors["right_front"].set_power(right_power)
         self.motors["left_rear"].set_power(left_power)
         self.motors["right_rear"].set_power(right_power)
-    '''
+    
 
     def forward(self, power):
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
         self.motors["right_front"].set_power(power)
         self.motors["right_rear"].set_power(power)
-
+    '''
+        
     def backward(self, power):
         self.motors["left_front"].set_power(-power)
         self.motors["left_rear"].set_power(-power)

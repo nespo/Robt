@@ -42,11 +42,11 @@ def main(window):
             elif char == ord('+') and selected_motor:
                 # Increase the selected motor's speed
                 # Placeholder for the method to increase speed; implement according to your setup
-                robot.adjust_motor_speed(selected_motor, 10)
+                robot.set_motor_power(selected_motor, 10)
             elif char == ord('-') and selected_motor:
                 # Decrease the selected motor's speed
                 # Placeholder for the method to decrease speed; implement according to your setup
-                robot.adjust_motor_speed(selected_motor, -10)
+                robot.set_motor_power(selected_motor, -10)
 
     finally:
         curses.nocbreak()
