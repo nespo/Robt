@@ -1,26 +1,20 @@
-# motor.py
 import RPi.GPIO as GPIO
+from pin import Pin  # Make sure to import the Pin class
+from pwm import PWM  # Make sure to import the PWM class
 
 class Motor:
-    def __init__(self, pwm_pin, dir_pin, is_reversed=False):
-        self.pwm_pin = pwm_pin
-        self.dir_pin = dir_pin
-        self.is_reversed = is_reversed
-
-        GPIO.setup(self.pwm_pin, GPIO.OUT)
-        GPIO.setup(self.dir_pin, GPIO.OUT)
-
-        self.pwm = GPIO.PWM(self.pwm_pin, 100)  # Set frequency to 100 Hz
-        self.pwm.start(0)
+    def __init__(self, pin_pwm, pin_dir, reverse=False):
+        # Convert pin identifiers to GPIO pins
+        self.pwm_pin = PWM(pin_pwm)
+        self.dir_pin = Pin(pin_dir, Pin.OUT)
+        self.is_reversed = reverse
 
     def set_power(self, power):
-        direction = GPIO.LOW if power >= 0 else GPIO.HIGH
-        if self.is_reversed:
-            direction = not direction
-
-        GPIO.output(self.dir_pin, direction)
+        # Set direction based on power sign and reverse flag
+        direction = GPIO.HIGH if (power > 0) ^ self.is_reversed else GPIO.LOW
+        self.dir_pin.value(direction)
         
-        # Adjust power to be within PWM range and apply
+        # Adjust power to be within 0-100% for PWM
         power = abs(power)
         power = max(min(100, power), 0)  # Constrain between 0 and 100
-        self.pwm.ChangeDutyCycle(power)
+        self.pwm_pin.pulse_width_percent(power)
