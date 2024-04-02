@@ -17,67 +17,45 @@ class Robot:
                                 reverse=config["motors"]["left_front"]["reverse"]),
             "right_front": Motor(pin_pwm=config["motors"]["right_front"]["pin_pwm"], 
                                  pin_dir=config["motors"]["right_front"]["pin_dir"], 
-                                 reverse=config["motors"]["right_front"]["reverse"]),
+                                 reverse=not config["motors"]["right_front"]["reverse"]), # Invert logic based on observed behavior
             "left_rear": Motor(pin_pwm=config["motors"]["left_rear"]["pin_pwm"], 
                                pin_dir=config["motors"]["left_rear"]["pin_dir"], 
                                reverse=config["motors"]["left_rear"]["reverse"]),
             "right_rear": Motor(pin_pwm=config["motors"]["right_rear"]["pin_pwm"], 
                                 pin_dir=config["motors"]["right_rear"]["pin_dir"], 
-                                reverse=config["motors"]["right_rear"]["reverse"]),
+                                reverse=not config["motors"]["right_rear"]["reverse"]), # Invert logic based on observed behavior
         }
-        self.current_speed = 0
-
-    def _adjust_power_for_smooth_control(self, target_power, step=10):
-        if target_power > self.current_speed:
-            for power in range(self.current_speed, target_power, step):
-                self.apply_motor_power(power)
-                time.sleep(0.1)
-        elif target_power < self.current_speed:
-            for power in range(self.current_speed, target_power, -step):
-                self.apply_motor_power(power)
-                time.sleep(0.1)
-        self.current_speed = target_power
 
     def apply_motor_power(self, power, reverse=False):
         for key, motor in self.motors.items():
-            direction_power = -power if (motor.is_reversed ^ reverse) else power
-            motor.set_power(direction_power)
+            # Adjusting logic to directly apply correct power based on the reverse flag
+            motor.set_power(-power if reverse else power)
 
-    def forward(self, power=100, smooth_start=True):
-        if smooth_start:
-            self._adjust_power_for_smooth_control(power)
-        else:
-            self.apply_motor_power(power)
+    def forward(self, power=100):
+        self.apply_motor_power(power, reverse=False)
 
-    def backward(self, power=100, smooth_start=True):
-        if smooth_start:
-            self._adjust_power_for_smooth_control(-power)
-        else:
-            self.apply_motor_power(power, reverse=True)
+    def backward(self, power=100):
+        self.apply_motor_power(power, reverse=True)
 
-    def turn_left(self, power=100, pivot=False, dynamic_steer=False):
-        adjust_power = power // 2 if dynamic_steer else power
-        if pivot:  # Pivot turn
-            self.motors["left_front"].set_power(-adjust_power)
-            self.motors["left_rear"].set_power(-adjust_power)
-        else:  # Smooth turn
-            self.motors["left_front"].set_power(adjust_power // 2)
-            self.motors["left_rear"].set_power(adjust_power // 2)
-        self.motors["right_front"].set_power(adjust_power)
-        self.motors["right_rear"].set_power(adjust_power)
+    def turn_left(self, power=100, pivot=False):
+        # Adjusting turning logic to ensure proper coordination between wheels
+        left_power = -power if pivot else power / 2
+        right_power = power
+        self.motors["left_front"].set_power(left_power)
+        self.motors["left_rear"].set_power(left_power)
+        self.motors["right_front"].set_power(right_power)
+        self.motors["right_rear"].set_power(right_power)
 
-    def turn_right(self, power=100, pivot=False, dynamic_steer=False):
-        adjust_power = power // 2 if dynamic_steer else power
-        if pivot:  # Pivot turn
-            self.motors["right_front"].set_power(-adjust_power)
-            self.motors["right_rear"].set_power(-adjust_power)
-        else:  # Smooth turn
-            self.motors["right_front"].set_power(adjust_power // 2)
-            self.motors["right_rear"].set_power(adjust_power // 2)
-        self.motors["left_front"].set_power(adjust_power)
-        self.motors["left_rear"].set_power(adjust_power)
+    def turn_right(self, power=100, pivot=False):
+        # Adjusting turning logic to ensure proper coordination between wheels
+        right_power = -power if pivot else power / 2
+        left_power = power
+        self.motors["right_front"].set_power(right_power)
+        self.motors["right_rear"].set_power(right_power)
+        self.motors["left_front"].set_power(left_power)
+        self.motors["left_rear"].set_power(left_power)
 
     def stop(self):
-        self._adjust_power_for_smooth_control(0)
+        for motor in self.motors.values():
+            motor.set_power(0)
 
-    # Implement any additional functions like path correction here based on sensor feedback.
