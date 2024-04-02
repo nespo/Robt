@@ -1,6 +1,12 @@
+import os, sys
+# Adjust the sys.path to include the parent directory of robot_code
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.join(script_dir, '..', '..')
+sys.path.append(os.path.abspath(parent_dir))
+
 import RPi.GPIO as GPIO
-from pin import Pin  # Make sure to import the Pin class
-from pwm import PWM  # Make sure to import the PWM class
+from robot_code.modules.pin import Pin  # Make sure to import the Pin class
+from robot_code.modules.pwm import PWM  # Make sure to import the PWM class
 
 class Motor:
     def __init__(self, pin_pwm, pin_dir, reverse=False):
