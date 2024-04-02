@@ -1,4 +1,9 @@
-import curses
+import curses, os, sys
+# Adjust the sys.path to include the parent directory of robot_code
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.join(script_dir, '..', '..')
+sys.path.append(os.path.abspath(parent_dir))
+
 from robot_code.code.motor_control import Robot
 from config import config
 
