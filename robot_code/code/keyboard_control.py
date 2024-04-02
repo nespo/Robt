@@ -1,5 +1,5 @@
 import curses
-from motor_control import Robot
+from robot_code.code.motor_control import Robot
 from config import config
 
 def main(window):
