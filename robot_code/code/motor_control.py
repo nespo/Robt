@@ -63,9 +63,9 @@ class Robot:
   
         
     def backward(self, power):
-        self.motors["left_front"].set_power(-power)
+        self.motors["left_front"].set_power(power-10)
         self.motors["left_rear"].set_power(-power)
-        self.motors["right_front"].set_power(-power)
+        self.motors["right_front"].set_power(power-10)
         self.motors["right_rear"].set_power(-power)
 
     def turn_left(self, power):
