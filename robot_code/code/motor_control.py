@@ -26,12 +26,7 @@ class Robot:
                                 reverse=config["motors"]["right_rear"]["reverse"]),
         }
 
-        self.left_rear_speed = Speed(25)
-        self.right_rear_speed = Speed(4)  
-
-    def start_speed_thread(self):
-        self.left_rear_speed.start()
-        self.right_rear_speed.start()
+        
 
     def set_motor_power(self, motor, power):
         # Correctly call set_power for each motor
