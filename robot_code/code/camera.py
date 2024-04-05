@@ -1,56 +1,91 @@
+import cv2
 import torch
 import json
 from pathlib import Path
-from picamera import PiCamera
-from time import sleep
-from PIL import Image
+from datetime import datetime
+import numpy as np
 
-# Initialize the PiCamera
-camera = PiCamera()
-camera.resolution = (1920, 1080) # You can adjust this based on your needs
+def setup_directories(base_path: Path) -> tuple:
+    """
+    Ensure the directories for storing images and detection data exist.
 
-# Path to save the captured image
-image_path = Path('/robot_code/images/captured_image.jpg')
-# Ensure the output directory exists
-image_path.parent.mkdir(parents=True, exist_ok=True)
+    Parameters:
+    - base_path: The base directory path of the project.
 
-# Capture an image
-print("Capturing image...")
-camera.start_preview()
-sleep(2)  # Camera warm-up time
-camera.capture(str(image_path))
-camera.stop_preview()
+    Returns:
+    - A tuple of Paths for images and detections directories.
+    """
+    image_dir = base_path / 'images'
+    detection_dir = base_path / 'detections'
+    image_dir.mkdir(parents=True, exist_ok=True)
+    detection_dir.mkdir(parents=True, exist_ok=True)
+    return image_dir, detection_dir
 
-# Load the YOLOv5 model
-model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+def save_detection_data(detection_dir: Path, frame_id: int, detected_objects: list) -> None:
+    """
+    Save detection data to a JSON file.
 
-# Process the captured image
-print("Processing image with YOLOv5...")
-results = model(image_path)
+    Parameters:
+    - detection_dir: The directory to save detection data files.
+    - frame_id: The identifier for the current frame.
+    - detected_objects: A list of detected objects in the current frame.
+    """
+    detection_info = {
+        'frame_id': frame_id,
+        'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S%f"),
+        'detections': detected_objects
+    }
+    detections_json_path = detection_dir / f'detections_{frame_id:04d}.json'
+    with detections_json_path.open('w') as f:
+        json.dump(detection_info, f)
 
-# Save processed image with detections
-output_dir = Path('/robot_code/detections')
-output_dir.mkdir(parents=True, exist_ok=True)
-results.save(save_dir=output_dir)
+def process_stream(stream_url: str, model) -> None:
+    """
+    Continuously process video stream for object detection.
 
-# Extract detection data
-detected_objects = results.pandas().xyxy[0].to_dict(orient="records")  # Convert detections to dictionary
+    Parameters:
+    - stream_url: The URL for the video stream.
+    - model: The loaded YOLOv5 model for object detection.
+    """
+    base_path = Path(__file__).parent.parent
+    _, detection_dir = setup_directories(base_path)
 
-# Store detection results
-detection_info = {
-    'image_path': str(image_path),
-    'detections': detected_objects
-}
+    cap = cv2.VideoCapture(stream_url)
+    frame_id = 0
 
-# Save detection data to a JSON file for further use
-detections_json_path = output_dir / 'detections.json'
-with open(detections_json_path, 'w') as f:
-    json.dump(detection_info, f)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to capture frame from stream.")
+            break
 
-print(f"Image processed. Detection data saved to {detections_json_path}")
+        results = model(frame)
+        detected_objects = results.pandas().xyxy[0].to_dict(orient="records")
+        save_detection_data(detection_dir, frame_id, detected_objects)
 
-# Optionally, display the image with detections
-# Load the image with PIL and display it if desired
-processed_image_path = list(output_dir.glob('*.jpg'))[0]  # Adjust based on saved file
-with Image.open(processed_image_path) as img:
-    img.show()
+        # Optional: Display the frame with detections
+        cv2.imshow('YOLOv5 Object Detection', np.squeeze(results.render()))
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        frame_id += 1
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+def main(stream_url: str) -> None:
+    """
+    Main function to initialize the model and start the video stream processing.
+
+    Parameters:
+    - stream_url: The URL for the video stream.
+    """
+    # Load the YOLOv5 model
+    model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+
+    # Process the video stream
+    process_stream(stream_url, model)
+
+if __name__ == "__main__":
+    stream_url = 'http://192.168.211.75:8080/video'  # Your IP camera stream URL
+    main(stream_url)
