@@ -80,7 +80,7 @@ def process_stream(stream_url: str, model, ultrasonic_sensor) -> None:
 def camera_and_ultrasonic_data_collection():
     stream_url = '0'  # Use 0 for the default camera, modify as needed for other sources
     model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
-    ultrasonic_sensor = Ultrasonic(trig=Pin("GPIO_PIN_FOR_TRIG"), echo=Pin("GPIO_PIN_FOR_ECHO"))
+    ultrasonic_sensor = Ultrasonic(trig=Pin("D8"), echo=Pin("D9"))
     process_stream(stream_url, model, ultrasonic_sensor)
 
 def navigate_obstacles(robot, us):
