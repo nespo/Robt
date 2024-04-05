@@ -54,15 +54,10 @@ def process_stream(stream_url: str, model) -> None:
         detected_objects = results.pandas().xyxy[0].to_dict(orient="records")
         save_detection_data(detection_dir, frame_id, detected_objects)
 
-        # Display the frame with detections
-        cv2.imshow('YOLOv5 Object Detection', np.squeeze(results.render()))
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
+        # Update frame_id for the next capture
         frame_id += 1
 
     cap.release()
-    cv2.destroyAllWindows()
 
 def main(stream_url: str) -> None:
     """
