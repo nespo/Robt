@@ -34,9 +34,9 @@ def setup_directories(base_path: Path) -> tuple:
     detection_dir.mkdir(parents=True, exist_ok=True)
     return image_dir, detection_dir
 
-def save_detection_data(detection_dir: Path, frame_id: int, detected_objects: list, distance: float) -> None:
+def save_detection_data(detection_dir: Path, frame_id: int, detected_objects: list, distance: float):
     """
-    Save detection data to a JSON file including ultrasonic sensor distance.
+    Modified to serialize detected_objects properly for JSON.
     """
     detection_info = {
         'frame_id': frame_id,
@@ -46,36 +46,36 @@ def save_detection_data(detection_dir: Path, frame_id: int, detected_objects: li
     }
     detections_json_path = detection_dir / f'detections_{frame_id:04d}.json'
     with detections_json_path.open('w') as f:
-        json.dump(detection_info, f)
+        json.dump(detection_info, f, default=str)  # Use default=str to handle non-serializable data
 
-def process_stream(stream_url: str, model, ultrasonic_sensor) -> None:
+def process_stream(stream_url: str, model, ultrasonic_sensor):
     base_path = Path(__file__).resolve().parent.parent
-    _, detection_dir = setup_directories(base_path)
+    image_dir, detection_dir = setup_directories(base_path)
     
     cap = cv2.VideoCapture(stream_url if stream_url.startswith("http") else 0)
     frame_id = 0
 
-    if not cap.isOpened():
-        print("Error: Could not open video source.")
-        return
-
-    while True:
+    while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            print("Failed to capture frame from stream.")
             break
 
+        # Perform object detection
         results = model(frame)
         detected_objects = results.pandas().xyxy[0].to_dict(orient="records")
         
-        # Get distance from the ultrasonic sensor at a specific angle, assuming forward facing
+        # Save the current frame image in /images folder
+        frame_image_path = image_dir / f'frame_{frame_id:04d}.jpg'
+        cv2.imwrite(str(frame_image_path), frame)
+        
         distance = ultrasonic_sensor.get_distance_at(0)  # 0 degrees is straight ahead
-
+        
         save_detection_data(detection_dir, frame_id, detected_objects, distance)
 
         frame_id += 1
 
     cap.release()
+
 
 def camera_and_ultrasonic_data_collection():
     stream_url = '0'  # Use 0 for the default camera, modify as needed for other sources
