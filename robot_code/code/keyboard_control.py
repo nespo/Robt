@@ -66,13 +66,13 @@ def main(window):
                 time.sleep(1)  # Adjust timing as necessary
             else:  # Manual control
                 if char == curses.KEY_UP or char == ord('w'):
-                    robot.forward(100)
+                    robot.forward(40)
                 elif char == curses.KEY_DOWN or char == ord('s'):
-                    robot.backward(100)
+                    robot.backward(40)
                 elif char == curses.KEY_LEFT or char == ord('a'):
-                    robot.turn_left(100)
+                    robot.turn_left(40)
                 elif char == curses.KEY_RIGHT or char == ord('d'):
-                    robot.turn_right(100)
+                    robot.turn_right(40)
                 elif char == ord(' '):
                     robot.stop()
 
