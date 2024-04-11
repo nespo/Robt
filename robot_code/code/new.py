@@ -20,34 +20,74 @@ from robot_code.code.config import config
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
+'''
 def cmd_vel_callback(data, robot):
-    # Extract linear and angular velocities
+    # Velocity conversion: Adjust this logic based on your robot's specifications
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
-    # Default motor power adjustments
-    adjust_power = 10
-    turn_power_reduction = 0.5
+    # Differential drive robot formula for wheel speeds:
+    left_power = linear_speed - angular_speed
+    right_power = linear_speed + angular_speed
 
-    # Determine the base power from linear speed
-    base_power = linear_speed * 100  # Scale as necessary
+    # Adjust power values based on your robot's specific needs
+    left_power_scaled = max(min(left_power * 100, 100), -100)
+    right_power_scaled = max(min(right_power * 100, 100), -100)
 
-    # Calculate differential for turning based on angular speed
-    turn_difference = angular_speed * 50  # Adjust the factor as necessary for your robot
+    # Apply correction for motor direction
+    robot.set_motor_power("left_front", -left_power_scaled)
+    robot.set_motor_power("left_rear", -left_power_scaled)
+    robot.set_motor_power("right_front", right_power_scaled)
+    robot.set_motor_power("right_rear", right_power_scaled)
+'''
 
-    # Calculate individual motor powers
-    left_front_power = -base_power + adjust_power - (turn_difference * turn_power_reduction)
-    left_rear_power = base_power - (turn_difference * turn_power_reduction)
-    right_front_power = -base_power + adjust_power + (turn_difference * turn_power_reduction)
-    right_rear_power = base_power + (turn_difference * turn_power_reduction)
+def cmd_vel_callback(data, robot):
+    # Extract linear and angular velocities from the Twist message
+    linear_speed = data.linear.x  # m/s
+    angular_speed = data.angular.z  # rad/s
 
-    # Apply power adjustments to the motors
+    # Default adjustments
+    linear_adjustment = 10  # Adjust based on your needs
+    angular_adjustment = 50  # Adjust based on your needs and scaling
+    
+    # Calculate base power for linear movement (forward/backward)
+    base_linear_power = linear_speed * 100
+    
+    # Calculate differential power for angular movement (left/right turn)
+    differential_angular_power = angular_speed * angular_adjustment
+
+    # Assign power to each motor based on the desired movement direction and rotation
+    if linear_speed != 0:
+        # For forward/backward movement
+        left_front_power = -base_linear_power + linear_adjustment
+        right_front_power = -base_linear_power + linear_adjustment
+        left_rear_power = base_linear_power
+        right_rear_power = base_linear_power
+    else:
+        # Stop linear movement if no linear speed is commanded
+        left_front_power = 0
+        right_front_power = 0
+        left_rear_power = 0
+        right_rear_power = 0
+
+    if angular_speed > 0:
+        # Turning left: Decrease power on left motors, increase on right motors
+        left_front_power -= differential_angular_power
+        left_rear_power -= differential_angular_power
+        right_front_power += differential_angular_power
+        right_rear_power += differential_angular_power
+    elif angular_speed < 0:
+        # Turning right: Increase power on left motors, decrease on right motors
+        left_front_power += differential_angular_power
+        left_rear_power += differential_angular_power
+        right_front_power -= differential_angular_power
+        right_rear_power -= differential_angular_power
+
+    # Apply calculated power values, ensuring they are within the valid range
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
     robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
     robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
     robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
-
-
 
 def main(window):
     rospy.init_node('robot_controller', anonymous=True)
