@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import curses
 
 # Adding ROS Python API
 sys.path.append('/opt/ros/noetic/lib/python3/dist-packages')
