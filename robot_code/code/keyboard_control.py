@@ -70,9 +70,9 @@ def main(window):
                 elif char == curses.KEY_DOWN or char == ord('s'):
                     robot.backward(40)
                 elif char == curses.KEY_LEFT or char == ord('a'):
-                    robot.turn_left(40)
+                    robot.turn_left(70)
                 elif char == curses.KEY_RIGHT or char == ord('d'):
-                    robot.turn_right(40)
+                    robot.turn_right(70)
                 elif char == ord(' '):
                     robot.stop()
 
