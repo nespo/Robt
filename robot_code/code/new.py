@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
-import rospy
-from geometry_msgs.msg import Twist
-import curses
+#!/usr/bin/env python3import curses
 import os
 import sys
 import time
 
 # Adding ROS Python API
 sys.path.append('/opt/ros/noetic/lib/python3/dist-packages')
+
+import rospy
+from geometry_msgs.msg import Twist
 
 # Adjust sys.path to include the robot_code directory
 script_dir = os.path.dirname(__file__)
