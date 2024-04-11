@@ -1,16 +1,16 @@
-#!/usr/bin/env python3import curses
+#!/usr/bin/env python3
+import curses
 import os
 import sys
 import time
-import curses
 
-# Adding ROS Python API
+# ROS Python API
 sys.path.append('/opt/ros/noetic/lib/python3/dist-packages')
 
 import rospy
 from geometry_msgs.msg import Twist
 
-# Adjust sys.path to include the robot_code directory
+# Include the robot_code directory
 script_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
@@ -21,33 +21,23 @@ from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
 def cmd_vel_callback(data, robot):
-    # Calculate differential drive parameters from Twist message
+    # Velocity conversion: Adjust this logic based on your robot's specifications
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
-    # Convert to power levels for PiCar 4WD
-    left_power = max(min((linear_speed - angular_speed) * 100, 100), -100)
-    right_power = max(min((linear_speed + angular_speed) * 100, 100), -100)
+    # Differential drive robot formula for wheel speeds:
+    left_power = linear_speed - angular_speed
+    right_power = linear_speed + angular_speed
 
-    robot.set_motor_power("left_front", left_power)
-    robot.set_motor_power("left_rear", left_power)
-    robot.set_motor_power("right_front", right_power)
-    robot.set_motor_power("right_rear", right_power)
+    # Adjust power values based on your robot's specific needs
+    left_power_scaled = max(min(left_power * 100, 100), -100)
+    right_power_scaled = max(min(right_power * 100, 100), -100)
 
-def navigate_obstacles(robot, us):
-    scan_results = []
-    for angle in range(-90, 91, 18):
-        status = us.get_status_at(angle)
-        scan_results.append(status)
-
-    # Obstacle avoidance logic
-    if any(status == 0 for status in scan_results):
-        robot.backward(50)
-        time.sleep(1)
-        direction = scan_results.index(0) < len(scan_results) / 2
-        robot.turn_right(70) if direction else robot.turn_left(70)
-        time.sleep(1)
-        robot.forward(50)
+    # Apply correction for motor direction
+    robot.set_motor_power("left_front", -left_power_scaled)
+    robot.set_motor_power("left_rear", -left_power_scaled)
+    robot.set_motor_power("right_front", right_power_scaled)
+    robot.set_motor_power("right_rear", right_power_scaled)
 
 def main(window):
     rospy.init_node('robot_controller', anonymous=True)
@@ -67,18 +57,18 @@ def main(window):
             char = window.getch()
             if char == ord('q'):  # Quit command
                 break
+            # Additional manual controls or functionalities can be added here
 
-            # Optional: Add manual control or other functionalities here
+            # Your existing navigation logic can go here; for now, we rely on /cmd_vel
 
-            navigate_obstacles(robot, us)
             time.sleep(0.1)  # Loop rate control
     finally:
+        robot.stop()  # Ensure the robot stops on script exit or interrupt
         curses.nocbreak()
         window.nodelay(False)
         window.keypad(False)
         curses.echo()
         curses.endwin()
-        robot.stop()  # Ensure robot stops on script termination or interrupt
 
 if __name__ == '__main__':
     curses.wrapper(main)
