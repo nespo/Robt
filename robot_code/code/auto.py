@@ -1,8 +1,10 @@
+import sys
+sys.path.append('/opt/ros/noetic/lib/python3/dist-packages')  # Adjust as necessary for your ROS version and Python version
 import rospy
 from geometry_msgs.msg import Twist
 import curses
 import os
-import sys
+
 import time
 
 # Adjust the sys.path to include the parent directory of robot_code
