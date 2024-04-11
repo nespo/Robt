@@ -24,37 +24,29 @@ def cmd_vel_callback(data, robot):
     # Extract linear and angular velocities
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
-    
-    # Adjust speeds to power settings, considering the robot's configuration
-    if linear_speed > 0:  # Moving forward
-        left_front_power = -(linear_speed * 100) + 10
-        right_front_power = -(linear_speed * 100) + 10
-        left_rear_power = (linear_speed * 100)
-        right_rear_power = (linear_speed * 100)
-    elif linear_speed < 0:  # Moving backward
-        left_front_power = (abs(linear_speed) * 100) - 10
-        right_front_power = (abs(linear_speed) * 100) - 10
-        left_rear_power = -(abs(linear_speed) * 100)
-        right_rear_power = -(abs(linear_speed) * 100)
-    else:  # Staying still or turning in place
-        left_front_power = 0
-        right_front_power = 0
-        left_rear_power = 0
-        right_rear_power = 0
 
-    # Adjust for turning by modifying the power based on angular speed
-    if angular_speed > 0:  # Turning left
-        left_front_power -= angular_speed * 50  # Reduce power for turning
-        left_rear_power -= angular_speed * 50
-    elif angular_speed < 0:  # Turning right
-        right_front_power += angular_speed * 50  # Reduce power for turning (note: angular_speed is negative)
-        right_rear_power += angular_speed * 50
+    # Default motor power adjustments
+    adjust_power = 10
+    turn_power_reduction = 0.5
 
-    # Apply power settings to the motors
+    # Determine the base power from linear speed
+    base_power = linear_speed * 100  # Scale as necessary
+
+    # Calculate differential for turning based on angular speed
+    turn_difference = angular_speed * 50  # Adjust the factor as necessary for your robot
+
+    # Calculate individual motor powers
+    left_front_power = -base_power + adjust_power - (turn_difference * turn_power_reduction)
+    left_rear_power = base_power - (turn_difference * turn_power_reduction)
+    right_front_power = -base_power + adjust_power + (turn_difference * turn_power_reduction)
+    right_rear_power = base_power + (turn_difference * turn_power_reduction)
+
+    # Apply power adjustments to the motors
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
     robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
     robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
     robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
+
 
 
 def main(window):
