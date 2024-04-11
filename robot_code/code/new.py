@@ -21,23 +21,41 @@ from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
 def cmd_vel_callback(data, robot):
-    # Velocity conversion: Adjust this logic based on your robot's specifications
+    # Extract linear and angular velocities
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
+    
+    # Adjust speeds to power settings, considering the robot's configuration
+    if linear_speed > 0:  # Moving forward
+        left_front_power = -(linear_speed * 100) + 10
+        right_front_power = -(linear_speed * 100) + 10
+        left_rear_power = (linear_speed * 100)
+        right_rear_power = (linear_speed * 100)
+    elif linear_speed < 0:  # Moving backward
+        left_front_power = (abs(linear_speed) * 100) - 10
+        right_front_power = (abs(linear_speed) * 100) - 10
+        left_rear_power = -(abs(linear_speed) * 100)
+        right_rear_power = -(abs(linear_speed) * 100)
+    else:  # Staying still or turning in place
+        left_front_power = 0
+        right_front_power = 0
+        left_rear_power = 0
+        right_rear_power = 0
 
-    # Differential drive robot formula for wheel speeds:
-    left_power = linear_speed - angular_speed
-    right_power = linear_speed + angular_speed
+    # Adjust for turning by modifying the power based on angular speed
+    if angular_speed > 0:  # Turning left
+        left_front_power -= angular_speed * 50  # Reduce power for turning
+        left_rear_power -= angular_speed * 50
+    elif angular_speed < 0:  # Turning right
+        right_front_power += angular_speed * 50  # Reduce power for turning (note: angular_speed is negative)
+        right_rear_power += angular_speed * 50
 
-    # Adjust power values based on your robot's specific needs
-    left_power_scaled = max(min(left_power * 100, 100), -100)
-    right_power_scaled = max(min(right_power * 100, 100), -100)
+    # Apply power settings to the motors
+    robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
+    robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
+    robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
+    robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
 
-    # Apply correction for motor direction
-    robot.set_motor_power("left_front", -left_power_scaled)
-    robot.set_motor_power("left_rear", -left_power_scaled)
-    robot.set_motor_power("right_front", right_power_scaled)
-    robot.set_motor_power("right_rear", right_power_scaled)
 
 def main(window):
     rospy.init_node('robot_controller', anonymous=True)
