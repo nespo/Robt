@@ -42,7 +42,6 @@ def cmd_vel_callback(data, robot):
 '''
 
 def cmd_vel_callback(data, robot):
-
     wheel_rad = 0.03  # Radius of the wheel in meters
     distance_of_wheels = 0.14  # Distance between wheels in meters
 
@@ -54,37 +53,35 @@ def cmd_vel_callback(data, robot):
     wl = (linear_speed - (angular_speed * distance_of_wheels) / 2) / wheel_rad
     wr = (linear_speed + (angular_speed * distance_of_wheels) / 2) / wheel_rad
 
-    # Scale the wheel speeds to PWM values, assuming a reasonable maximum wheel speed
-    max_wheel_speed = 100  # This is an assumption, adjust based on your robot's specifications
-    scale_factor = 255 / max_wheel_speed  # Scaling factor to convert rad/s to PWM range
+    # Scale the wheel speeds to PWM values
+    max_wheel_speed = 10  # Maximum reasonable wheel speed in rad/s
+    scale_factor = 100 / max_wheel_speed  # Scale to max power of 100 for forwards/backwards
 
     # Apply scaling
-    pwm_left = wl * scale_factor
-    pwm_right = wr * scale_factor
+    pwm_left = int(wl * scale_factor)
+    pwm_right = int(wr * scale_factor)
 
-    # Assigning motor powers based on the direction and scaled values
-    if angular_speed >= 0:
-        left_front_power = -pwm_left+10
-        right_front_power = -pwm_right+10
-        left_rear_power = pwm_left
-        right_rear_power = pwm_right
+    # Ensure PWM values are within the allowed range
+    pwm_left = max(-100, min(100, pwm_left))
+    pwm_right = max(-100, min(100, pwm_right))
+
+    # Assigning motor powers based on the velocities and handling directions
+    if linear_speed > 0:  # Forward
+        robot.forward(max(abs(pwm_left), abs(pwm_right)))
+    elif linear_speed < 0:  # Backward
+        robot.backward(max(abs(pwm_left), abs(pwm_right)))
+    elif angular_speed > 0:  # Turning left
+        robot.turn_left(70, 0.5)  # Assume typical power for turning is 70 with half power reduction
+    elif angular_speed < 0:  # Turning right
+        robot.turn_right(70, 0.5)  # Similar assumption for turning right
     else:
-        left_front_power = pwm_left
-        right_front_power = pwm_right
-        left_rear_power = -pwm_left + 10
-        right_rear_power = -pwm_right +10
+        robot.stop()  # No movement
 
 
 
 
     # Print the computed powers for debugging
-    print("LFP:", left_front_power, "RFP:", right_front_power, "LRP:", left_rear_power, "RRP:", right_rear_power)
-
-    # Apply motor powers ensuring values are within the acceptable range
-    robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
-    robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
-    robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
-    robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
+    print("LFP:", pwm_left, "RFP:", pwm_right)
 
 
 
