@@ -64,6 +64,8 @@ def cmd_vel_callback(data, robot):
     left_rear_power = base_rear_power - angular_power_adjustment
     right_rear_power = base_rear_power + angular_power_adjustment
 
+    print(left_front_power, right_front_power, left_rear_power, right_rear_power)
+
     # Apply motor powers ensuring values are within the acceptable range
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
     robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
