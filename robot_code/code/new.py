@@ -67,9 +67,9 @@ def cmd_vel_callback(data, robot):
 
     # Assigning motor powers based on the velocities and handling directions
     if linear_speed > 0:  # Forward
-        robot.forward(max(abs(pwm_left), abs(pwm_right)))
+        robot.forward(abs(pwm_left), abs(pwm_right))
     elif linear_speed < 0:  # Backward
-        robot.backward(max(abs(pwm_left), abs(pwm_right)))
+        robot.backward(abs(pwm_left), abs(pwm_right))
     else:
         robot.stop()  # No movement
 
