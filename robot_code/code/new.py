@@ -59,9 +59,9 @@ def cmd_vel_callback(data, robot):
     right_front_power_scaled = max(min(right_power_scaled - 80, 100), -100)
 
     # Apply correction for motor direction
-    robot.set_motor_power("left_front", power)
-    robot.set_motor_power("left_rear", -left_power_scaled)
-    robot.set_motor_power("right_front", power)
+    robot.set_motor_power("left_front", -left_power_scaled)
+    robot.set_motor_power("left_rear", left_power_scaled)
+    robot.set_motor_power("right_front", -right_power_scaled)
     robot.set_motor_power("right_rear", right_power_scaled)
 
 
