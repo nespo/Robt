@@ -20,7 +20,7 @@ from robot_code.code.config import config
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
-'''
+
 def cmd_vel_callback(data, robot):
     # Velocity conversion: Adjust this logic based on your robot's specifications
     linear_speed = data.linear.x  # m/s
@@ -39,48 +39,6 @@ def cmd_vel_callback(data, robot):
     robot.set_motor_power("left_rear", -left_power_scaled)
     robot.set_motor_power("right_front", right_power_scaled)
     robot.set_motor_power("right_rear", right_power_scaled)
-'''
-
-def cmd_vel_callback(data, robot):
-    wheel_rad = 0.03  # Radius of the wheel in meters
-    distance_of_wheels = 0.14  # Distance between wheels in meters
-
-    # Extract linear and angular velocities from the received data
-    linear_speed = data.linear.x  # Forward/backward speed (m/s)
-    angular_speed = data.angular.z  # Turning speed (rad/s)
-
-    # Compute wheel speeds in rad/s
-    wl = (linear_speed - (angular_speed * distance_of_wheels) / 2) / wheel_rad
-    wr = (linear_speed + (angular_speed * distance_of_wheels) / 2) / wheel_rad
-
-    # Scale the wheel speeds to PWM values
-    max_wheel_speed = 5  # Maximum reasonable wheel speed in rad/s
-    scale_factor = 100 / max_wheel_speed  # Scale to max power of 100 for forwards/backwards
-
-    # Apply scaling
-    pwm_left = int(wl * scale_factor)
-    pwm_right = int(wr * scale_factor)
-
-    # Ensure PWM values are within the allowed range
-    pwm_left = max(-100, min(100, pwm_left))
-    pwm_right = max(-100, min(100, pwm_right))
-
-    # Assigning motor powers based on the velocities and handling directions
-    if linear_speed > 0:  # Forward
-        robot.forward(abs(pwm_left), abs(pwm_right))
-    elif linear_speed < 0:  # Backward
-        robot.backward(abs(pwm_left), abs(pwm_right))
-    else:
-        robot.stop()  # No movement
-
-
-
-
-    # Print the computed powers for debugging
-    print("LFP:", pwm_left, "RFP:", pwm_right)
-
-
-
 
 
 def main(window):
