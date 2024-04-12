@@ -58,22 +58,19 @@ def cmd_vel_callback(data, robot):
     # Calculate turning influences
     angular_power_adjustment = angular_speed * scale_angular
 
-    # Correcting the application of angular adjustment
-    if angular_speed > 0:
+    # Final motor powers adjusted for direction and angular velocity
+    # All wheels receive the same directional adjustment for angular power
+    if angular_speed >= 0:
         # Turning left
         left_adjustment = -angular_power_adjustment
         right_adjustment = angular_power_adjustment
-    elif angular_speed < 0:
+    else:
         # Turning right
         left_adjustment = angular_power_adjustment
         right_adjustment = -angular_power_adjustment
-    else:
-        left_adjustment = 0
-        right_adjustment = 0
 
-    # Final motor powers adjusted for direction and angular velocity
-    left_front_power = -base_front_power + left_adjustment
-    right_front_power = -base_front_power + right_adjustment
+    left_front_power = -(base_front_power + left_adjustment)
+    right_front_power = -(base_front_power + right_adjustment)
     left_rear_power = base_rear_power + left_adjustment
     right_rear_power = base_rear_power + right_adjustment
 
