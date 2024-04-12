@@ -54,7 +54,7 @@ def cmd_vel_callback(data, robot):
     wr = (linear_speed + (angular_speed * distance_of_wheels) / 2) / wheel_rad
 
     # Scale the wheel speeds to PWM values
-    max_wheel_speed = 10  # Maximum reasonable wheel speed in rad/s
+    max_wheel_speed = 5  # Maximum reasonable wheel speed in rad/s
     scale_factor = 100 / max_wheel_speed  # Scale to max power of 100 for forwards/backwards
 
     # Apply scaling
@@ -70,10 +70,6 @@ def cmd_vel_callback(data, robot):
         robot.forward(max(abs(pwm_left), abs(pwm_right)))
     elif linear_speed < 0:  # Backward
         robot.backward(max(abs(pwm_left), abs(pwm_right)))
-    elif angular_speed > 0:  # Turning left
-        robot.turn_left(70, 0.5)  # Assume typical power for turning is 70 with half power reduction
-    elif angular_speed < 0:  # Turning right
-        robot.turn_right(70, 0.5)  # Similar assumption for turning right
     else:
         robot.stop()  # No movement
 
