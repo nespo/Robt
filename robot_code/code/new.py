@@ -42,10 +42,18 @@ def cmd_vel_callback(data, robot):
 '''
 
 def cmd_vel_callback(data, robot):
+
+    wheel_rad = 0.03 #m
+    distance_of_wheels = 0.14
+
+    
     # Extract linear and angular velocities
     linear_speed = data.linear.x  # Forward/backward speed (m/s)
     angular_speed = data.angular.z  # Turning speed (rad/s)
 
+    wl = (linear_speed - (angular_speed*distance_of_wheels)/2)/wheel_rad
+    wr = (linear_speed + (angular_speed*distance_of_wheels)/2)/wheel_rad
+    '''
     # Configuration parameters
     scale_linear = 100  # Scale factor for linear speed
     scale_angular = 50  # Scale factor for angular adjustments
@@ -57,7 +65,7 @@ def cmd_vel_callback(data, robot):
 
     # Calculate turning influences
     angular_power_adjustment = angular_speed * scale_angular
-
+    
     # Final motor powers adjusted for direction and angular velocity
     # All wheels receive the same directional adjustment for angular power
     if angular_speed >= 0:
@@ -74,6 +82,18 @@ def cmd_vel_callback(data, robot):
     right_front_power = base_front_power + right_adjustment
     left_rear_power = -(base_rear_power + left_adjustment)
     right_rear_power = -(base_rear_power + right_adjustment)
+    '''
+    if angular_speed >= 0:
+        left_front_power = -wl
+        right_front_power = -wr
+        left_rear_power = wl
+        right_rear_power = wr
+    else:
+        left_front_power = wl
+        right_front_power = wr
+        left_rear_power = -wl
+        right_rear_power = -wr
+
 
     # Print the computed powers for debugging
     print("LFP:", left_front_power, "RFP:", right_front_power, "LRP:", left_rear_power, "RRP:", right_rear_power)
