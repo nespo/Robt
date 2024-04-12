@@ -62,8 +62,7 @@ def cmd_vel_callback(data, robot):
     # Apply direction corrections for your robot's specific configuration:
     # Front wheels rotate counterclockwise for forward movement (negative power)
     # Rear wheels rotate clockwise for forward movement (positive power)
-    #robot.set_motor_powers(-front_left_power_scaled, rear_left_power_scaled,
-                           -front_right_power_scaled, rear_right_power_scaled)
+    #robot.set_motor_powers(-front_left_power_scaled, rear_left_power_scaled,-front_right_power_scaled, rear_right_power_scaled)
     robot.set_motor_power("left_front", rear_left_power_scaled)
     robot.set_motor_power("left_rear", rear_left_power_scaled)
     robot.set_motor_power("right_front", rear_right_power_scaled)
