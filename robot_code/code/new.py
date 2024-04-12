@@ -48,33 +48,32 @@ def cmd_vel_callback(data, robot):
 
     # Define power scaling
     scale_factor = 100
-    power_adjustment = 10  # Difference in power between front and rear wheels
+    power_adjustment = 10  # Adjust the difference in power between front and rear wheels
 
-    # Calculate motor powers based on direction and scale factor
+    # Calculate base motor powers
     if linear_speed >= 0:
         # Moving forward
         rear_power = linear_speed * scale_factor
         front_power = rear_power - power_adjustment
     else:
         # Moving backward
-        rear_power = linear_speed * scale_factor
-        front_power = rear_power + power_adjustment
+        rear_power = abs(linear_speed) * scale_factor
+        front_power = rear_power - power_adjustment
 
-    # Calculate differential power for turning
-    angular_adjustment = angular_speed * 50  # Tune this value based on your robot's turning responsiveness
+    # Calculate turning adjustments
+    turn_adjustment = angular_speed * 50  # Tune this value based on your robot's responsiveness
 
-    # Apply turning adjustments
-    left_front_power = front_power - angular_adjustment
-    right_front_power = front_power + angular_adjustment
-    left_rear_power = rear_power - angular_adjustment
-    right_rear_power = rear_power + angular_adjustment
+    # Apply base power and turning adjustments
+    left_front_power = -front_power - (turn_adjustment if angular_speed > 0 else -turn_adjustment)
+    right_front_power = -front_power + (turn_adjustment if angular_speed > 0 else -turn_adjustment)
+    left_rear_power = rear_power - (turn_adjustment if angular_speed > 0 else -turn_adjustment)
+    right_rear_power = rear_power + (turn_adjustment if angular_speed > 0 else -turn_adjustment)
 
-    # Ensure the motor power values are within the valid range [-100, 100]
+    # Clamping the power values to be within the valid range
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
     robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
     robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
     robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
-
 
 
 def main(window):
