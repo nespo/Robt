@@ -43,56 +43,38 @@ def cmd_vel_callback(data, robot):
 
 def cmd_vel_callback(data, robot):
 
-    wheel_rad = 0.03 #m
-    distance_of_wheels = 0.14
+    wheel_rad = 0.03  # Radius of the wheel in meters
+    distance_of_wheels = 0.14  # Distance between wheels in meters
 
-    
-    # Extract linear and angular velocities
+    # Extract linear and angular velocities from the received data
     linear_speed = data.linear.x  # Forward/backward speed (m/s)
     angular_speed = data.angular.z  # Turning speed (rad/s)
 
-    wl = (linear_speed - (angular_speed*distance_of_wheels)/2)/wheel_rad
-    wr = (linear_speed + (angular_speed*distance_of_wheels)/2)/wheel_rad
-    '''
-    # Configuration parameters
-    scale_linear = 100  # Scale factor for linear speed
-    scale_angular = 50  # Scale factor for angular adjustments
-    front_rear_power_difference = 10  # Power difference between front and rear wheels
+    # Compute wheel speeds in rad/s
+    wl = (linear_speed - (angular_speed * distance_of_wheels) / 2) / wheel_rad
+    wr = (linear_speed + (angular_speed * distance_of_wheels) / 2) / wheel_rad
 
-    # Calculate base powers
-    base_rear_power = linear_speed * scale_linear
-    base_front_power = base_rear_power - (front_rear_power_difference if linear_speed >= 0 else -front_rear_power_difference)
+    # Scale the wheel speeds to PWM values, assuming a reasonable maximum wheel speed
+    max_wheel_speed = 100  # This is an assumption, adjust based on your robot's specifications
+    scale_factor = 255 / max_wheel_speed  # Scaling factor to convert rad/s to PWM range
 
-    # Calculate turning influences
-    angular_power_adjustment = angular_speed * scale_angular
-    
-    # Final motor powers adjusted for direction and angular velocity
-    # All wheels receive the same directional adjustment for angular power
+    # Apply scaling
+    pwm_left = wl * scale_factor
+    pwm_right = wr * scale_factor
+
+    # Assigning motor powers based on the direction and scaled values
     if angular_speed >= 0:
-        # Turning left
-        left_adjustment = -angular_power_adjustment
-        right_adjustment = angular_power_adjustment
+        left_front_power = -pwm_left+10
+        right_front_power = -pwm_right+10
+        left_rear_power = pwm_left
+        right_rear_power = pwm_right
     else:
-        # Turning right
-        left_adjustment = angular_power_adjustment
-        right_adjustment = -angular_power_adjustment
+        left_front_power = pwm_left
+        right_front_power = pwm_right
+        left_rear_power = -pwm_left + 10
+        right_rear_power = -pwm_right +10
 
-    # Applying negative to front powers and positive to rear as per requirement
-    left_front_power = base_front_power + left_adjustment
-    right_front_power = base_front_power + right_adjustment
-    left_rear_power = -(base_rear_power + left_adjustment)
-    right_rear_power = -(base_rear_power + right_adjustment)
-    '''
-    if angular_speed >= 0:
-        left_front_power = -wl
-        right_front_power = -wr
-        left_rear_power = wl
-        right_rear_power = wr
-    else:
-        left_front_power = wl
-        right_front_power = wr
-        left_rear_power = -wl
-        right_rear_power = -wr
+
 
 
     # Print the computed powers for debugging
