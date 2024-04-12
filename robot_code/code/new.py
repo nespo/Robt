@@ -50,19 +50,25 @@ def cmd_vel_callback(data, robot):
     left_power = linear_speed - angular_speed
     right_power = linear_speed + angular_speed
 
-    # Adjust power values based on your robot's specific needs
+    # Scale the powers to the motor input range and clamp them to max/min values
     left_power_scaled = max(min(left_power * 100, 100), -100)
     right_power_scaled = max(min(right_power * 100, 100), -100)
 
-    # Decrease power for the front wheels by 10 units
-    left_front_power_scaled = max(min(left_power_scaled - 80, 100), -100)
-    right_front_power_scaled = max(min(right_power_scaled - 80, 100), -100)
+    # Calculate the scaled power for the front and rear wheels
+    # Front wheels get 10-15 units less power than the rear wheels
+    # Using an average reduction of 12.5 for simplicity
+    power_reduction = 12.5
+    left_front_power_scaled = max(min(left_power_scaled - power_reduction, 100), -100)
+    right_front_power_scaled = max(min(right_power_scaled - power_reduction, 100), -100)
 
-    # Apply correction for motor direction
-    robot.set_motor_power("left_front", -left_power_scaled)
+    # Apply correction for motor direction to comply with your robot's mechanism:
+    # Front wheels rotate counterclockwise for forward movement (-ve power)
+    # Rear wheels rotate clockwise for forward movement (+ve power)
+    robot.set_motor_power("left_front", -left_front_power_scaled)
     robot.set_motor_power("left_rear", left_power_scaled)
-    robot.set_motor_power("right_front", -right_power_scaled)
+    robot.set_motor_power("right_front", -right_front_power_scaled)
     robot.set_motor_power("right_rear", right_power_scaled)
+
 
 
 def main(window):
