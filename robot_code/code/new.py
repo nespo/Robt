@@ -20,7 +20,7 @@ from robot_code.code.config import config
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
-
+'''
 def cmd_vel_callback(data, robot):
     # Velocity conversion: Adjust this logic based on your robot's specifications
     linear_speed = data.linear.x  # m/s
@@ -38,6 +38,30 @@ def cmd_vel_callback(data, robot):
     robot.set_motor_power("left_front", -left_power_scaled)
     robot.set_motor_power("left_rear", -left_power_scaled)
     robot.set_motor_power("right_front", right_power_scaled)
+    robot.set_motor_power("right_rear", right_power_scaled)
+'''
+
+def cmd_vel_callback(data, robot):
+    # Velocity conversion: Adjust this logic based on your robot's specifications
+    linear_speed = data.linear.x  # m/s
+    angular_speed = data.angular.z  # rad/s
+
+    # Differential drive robot formula for wheel speeds:
+    left_power = linear_speed - angular_speed
+    right_power = linear_speed + angular_speed
+
+    # Adjust power values based on your robot's specific needs
+    left_power_scaled = max(min(left_power * 100, 100), -100)
+    right_power_scaled = max(min(right_power * 100, 100), -100)
+
+    # Decrease power for the front wheels by 10 units
+    left_front_power_scaled = max(min(left_power_scaled - 10, 100), -100)
+    right_front_power_scaled = max(min(right_power_scaled - 10, 100), -100)
+
+    # Apply correction for motor direction
+    robot.set_motor_power("left_front", -left_front_power_scaled)
+    robot.set_motor_power("left_rear", -left_power_scaled)
+    robot.set_motor_power("right_front", right_front_power_scaled)
     robot.set_motor_power("right_rear", right_power_scaled)
 
 
