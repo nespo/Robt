@@ -42,38 +42,37 @@ def cmd_vel_callback(data, robot):
 '''
 
 def cmd_vel_callback(data, robot):
-    # Extract linear and angular velocities from the Twist message
+    # Extract linear and angular velocities
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
-    # Define power scaling
-    scale_factor = 100
-    power_adjustment = 10  # Adjust the difference in power between front and rear wheels
+    # Define power scaling and adjustments
+    base_scale = 100
+    front_adjustment = 10  # Front wheels have slightly less power
 
-    # Calculate base motor powers
+    # Calculate base power for each group of wheels
     if linear_speed >= 0:
-        # Moving forward
-        rear_power = linear_speed * scale_factor
-        front_power = rear_power - power_adjustment
+        rear_power = linear_speed * base_scale
+        front_power = rear_power - front_adjustment
     else:
-        # Moving backward
-        rear_power = abs(linear_speed) * scale_factor
-        front_power = rear_power - power_adjustment
+        rear_power = linear_speed * base_scale
+        front_power = rear_power + front_adjustment
 
-    # Calculate turning adjustments
-    turn_adjustment = angular_speed * 50  # Tune this value based on your robot's responsiveness
+    # Calculate angular adjustments
+    angular_adjustment = angular_speed * 50  # Modify this scale to fit robot's responsiveness
 
-    # Apply base power and turning adjustments
-    left_front_power = -front_power - (turn_adjustment if angular_speed > 0 else -turn_adjustment)
-    right_front_power = -front_power + (turn_adjustment if angular_speed > 0 else -turn_adjustment)
-    left_rear_power = rear_power - (turn_adjustment if angular_speed > 0 else -turn_adjustment)
-    right_rear_power = rear_power + (turn_adjustment if angular_speed > 0 else -turn_adjustment)
+    # Calculate final power values considering direction for turning
+    left_front_power = -front_power - angular_adjustment
+    right_front_power = -front_power + angular_adjustment
+    left_rear_power = rear_power - angular_adjustment
+    right_rear_power = rear_power + angular_adjustment
 
-    # Clamping the power values to be within the valid range
+    # Set motor powers ensuring the values are within [-100, 100]
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
     robot.set_motor_power("right_front", max(min(right_front_power, 100), -100))
     robot.set_motor_power("left_rear", max(min(left_rear_power, 100), -100))
     robot.set_motor_power("right_rear", max(min(right_rear_power, 100), -100))
+
 
 
 def main(window):
