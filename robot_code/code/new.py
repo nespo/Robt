@@ -46,6 +46,9 @@ def cmd_vel_callback(data, robot):
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
+
+    print(linear_speed, angular_speed)
+
     # Define power scaling and adjustments
     base_scale = 100
     front_adjustment = 10  # Front wheels have slightly less power
