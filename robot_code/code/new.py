@@ -40,31 +40,34 @@ def cmd_vel_callback(data, robot):
     robot.set_motor_power("right_front", right_power_scaled)
     robot.set_motor_power("right_rear", right_power_scaled)
 '''
-power =80
 def cmd_vel_callback(data, robot):
-    # Velocity conversion: Adjust this logic based on your robot's specifications
+    # Velocity conversion: Extract linear and angular components
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
-    # Differential drive robot formula for wheel speeds:
-    left_power = linear_speed - angular_speed
-    right_power = linear_speed + angular_speed
+    # Calculate powers for the rear wheels using differential drive formula
+    rear_left_power = linear_speed - angular_speed
+    rear_right_power = linear_speed + angular_speed
 
     # Scale the powers to the motor input range and clamp them to max/min values
-    left_power_scaled = max(min(left_power * 100, 100), -100)
-    right_power_scaled = max(min(right_power * 100, 100), -100)
+    rear_left_power_scaled = max(min(rear_left_power * 100, 100), -100)
+    rear_right_power_scaled = max(min(rear_right_power * 100, 100), -100)
 
-    # Calculate the scaled power for the front and rear wheels
     # Front wheels get 10-15 units less power than the rear wheels
     # Using an average reduction of 12.5 for simplicity
     power_reduction = 12.5
-    left_front_power_scaled = max(min(left_power_scaled - power_reduction, 100), -100)
-    right_front_power_scaled = max(min(right_power_scaled - power_reduction, 100), -100)
+    front_left_power_scaled = max(min(rear_left_power_scaled - power_reduction, 100), -100)
+    front_right_power_scaled = max(min(rear_right_power_scaled - power_reduction, 100), -100)
 
-    # Apply correction for motor direction to comply with your robot's mechanism:
-    # Front wheels rotate counterclockwise for forward movement (-ve power)
-    # Rear wheels rotate clockwise for forward movement (+ve power)
-    robot.forward(left_power_scaled)
+    # Apply direction corrections for your robot's specific configuration:
+    # Front wheels rotate counterclockwise for forward movement (negative power)
+    # Rear wheels rotate clockwise for forward movement (positive power)
+    robot.set_motor_powers(-front_left_power_scaled, rear_left_power_scaled,
+                           -front_right_power_scaled, rear_right_power_scaled)
+
+# Ensure that your robot class has a method `set_motor_powers(front_left, rear_left, front_right, rear_right)`
+# which is responsible for sending these power values to the respective motor drivers.
+
 
 
 
