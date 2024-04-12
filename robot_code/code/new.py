@@ -64,10 +64,10 @@ def cmd_vel_callback(data, robot):
     # Rear wheels rotate clockwise for forward movement (positive power)
     #robot.set_motor_powers(-front_left_power_scaled, rear_left_power_scaled,
                            -front_right_power_scaled, rear_right_power_scaled)
-    robot.set_motor_power("left_front", rear_left_power)
-    robot.set_motor_power("left_rear", rear_left_power)
-    robot.set_motor_power("right_front", rear_right_power)
-    robot.set_motor_power("right_rear", rear_right_power)
+    robot.set_motor_power("left_front", rear_left_power_scaled)
+    robot.set_motor_power("left_rear", rear_left_power_scaled)
+    robot.set_motor_power("right_front", rear_right_power_scaled)
+    robot.set_motor_power("right_rear", rear_right_power_scaled)
 
 # Ensure that your robot class has a method `set_motor_powers(front_left, rear_left, front_right, rear_right)`
 # which is responsible for sending these power values to the respective motor drivers.
