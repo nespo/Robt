@@ -46,42 +46,41 @@ def cmd_vel_callback(data, robot):
     linear_speed = data.linear.x  # m/s
     angular_speed = data.angular.z  # rad/s
 
-    # Default adjustments
-    linear_adjustment = 10  # Adjust based on your needs
-    angular_adjustment = 50  # Adjust based on your needs and scaling
-    
     # Calculate base power for linear movement (forward/backward)
     base_linear_power = linear_speed * 100
-    
     # Calculate differential power for angular movement (left/right turn)
-    differential_angular_power = angular_speed * angular_adjustment
+    differential_angular_power = angular_speed * 50
 
     # Assign power to each motor based on the desired movement direction and rotation
-    if linear_speed != 0:
-        # For forward/backward movement
-        left_front_power = -base_linear_power + linear_adjustment
-        right_front_power = -base_linear_power + linear_adjustment
+    if linear_speed > 0:
+        # Moving forward
+        left_front_power = -base_linear_power + 10
+        right_front_power = -base_linear_power + 10
         left_rear_power = base_linear_power
         right_rear_power = base_linear_power
+    elif linear_speed < 0:
+        # Moving backward
+        left_front_power = base_linear_power - 10
+        right_front_power = base_linear_power - 10
+        left_rear_power = -base_linear_power
+        right_rear_power = -base_linear_power
     else:
-        # Stop linear movement if no linear speed is commanded
+        # No linear movement, only adjust for angular velocity if needed
         left_front_power = 0
         right_front_power = 0
         left_rear_power = 0
         right_rear_power = 0
 
-    if angular_speed > 0:
-        # Turning left: Decrease power on left motors, increase on right motors
-        left_front_power -= differential_angular_power
-        left_rear_power -= differential_angular_power
-        right_front_power += differential_angular_power
-        right_rear_power += differential_angular_power
-    elif angular_speed < 0:
-        # Turning right: Increase power on left motors, decrease on right motors
-        left_front_power += differential_angular_power
-        left_rear_power += differential_angular_power
-        right_front_power -= differential_angular_power
-        right_rear_power -= differential_angular_power
+    if angular_speed != 0:
+        # Adjusting powers for turning left or right
+        left_turn_adjustment = -differential_angular_power if angular_speed > 0 else differential_angular_power
+        right_turn_adjustment = differential_angular_power if angular_speed > 0 else -differential_angular_power
+
+        # Apply the turning adjustment
+        left_front_power += left_turn_adjustment
+        right_front_power += right_turn_adjustment
+        left_rear_power += left_turn_adjustment
+        right_rear_power += right_turn_adjustment
 
     # Apply calculated power values, ensuring they are within the valid range
     robot.set_motor_power("left_front", max(min(left_front_power, 100), -100))
