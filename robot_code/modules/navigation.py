@@ -1,6 +1,7 @@
 import re
 import threading
 import serial
+import time
 
 # Setup serial connection
 serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
@@ -113,10 +114,12 @@ def convert_to_decimal(degrees_minutes, direction):
     return decimal
 
 def get_current_gps():
+    time.sleep(2)
     with data_lock:
-        lan = current_gps.get('latitude')
-        lon = current_gps.get('longitude')
-        return lan, lon
+        if len(current_gps) != 0:
+            lan = current_gps.get('latitude')
+            lon = current_gps.get('longitude')
+            return lan, lon
 
 def get_current_orientation():
     with data_lock:
