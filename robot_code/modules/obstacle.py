@@ -42,6 +42,7 @@ class LidarScanner:
         self.lidar.disconnect()
         logging.info("LIDAR disconnected safely.")
 
+
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
         self.lidar = lidar
@@ -52,7 +53,15 @@ class ObstacleChecker:
         self.us_data = {}
 
     def get_lidar_data(self):
-        self.lidar_data = self.lidar.iter_scans()
+        # Assume you want to use the most recent scan only
+        try:
+            self.lidar_data = next(self.lidar.iter_scans())
+        except StopIteration:
+            # No more scans available
+            self.lidar_data = {}
+        except RPLidarException as e:
+            logging.error(f"Error obtaining LIDAR data: {e}")
+            self.lidar_data = {}
 
     def full_ultrasonic_sweep(self):
         self.us_data = {}
@@ -67,9 +76,12 @@ class ObstacleChecker:
 
     def merge_sensor_data(self):
         sensor_data = np.full(360, self.config['max_distance'])
-        for angle, distance in self.lidar_data.items():
-            sensor_data[angle % 360] = distance
+        # Make sure lidar_data is a dictionary before attempting to iterate over its items
+        if isinstance(self.lidar_data, dict):
+            for angle, distance in self.lidar_data.items():
+                sensor_data[angle % 360] = distance
 
+        # Assuming us_data is also a dictionary
         for angle, distance in self.us_data.items():
             adjusted_angle = angle % 360
             sensor_data[adjusted_angle] = min(sensor_data[adjusted_angle], distance)
@@ -79,6 +91,6 @@ class ObstacleChecker:
     def check_for_obstacles(self):
         self.start_ultrasonic_sweep()
         self.get_lidar_data()
-        self.us_thread.join()  # Ensure ultrasonic data collection is complete
+        if self.us_thread is not None:
+            self.us_thread.join()  # Ensure ultrasonic data collection is complete
         return self.merge_sensor_data()
-
