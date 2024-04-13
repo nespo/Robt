@@ -64,7 +64,9 @@ class ObstacleChecker:
     def full_ultrasonic_sweep(self):
         self.us_data = {}
         for angle in range(-self.us.ANGLE_RANGE // 2, self.us.ANGLE_RANGE // 2 + 1, self.us.STEP):
-            self.us_data[angle] = self.us.get_distance_at(angle)
+            distance = self.us.get_distance_at(angle)
+            if distance is not None:
+                self.us_data[angle] = distance
             time.sleep(self.us.SERVO_SET_DELAY)
 
     def start_ultrasonic_sweep(self):
@@ -73,25 +75,22 @@ class ObstacleChecker:
             self.us_thread.start()
 
     def merge_sensor_data(self):
-        sensor_data = np.full(360, self.config['max_distance'])
-        if isinstance(self.lidar_data, dict):
-            for angle, distance in self.lidar_data.items():
-                adjusted_angle = angle % 360
-                sensor_data[adjusted_angle] = distance
+        sensor_data = np.full(360, self.config['max_distance'], dtype=np.float32)
+        for angle, distance in self.lidar_data.items():
+            adjusted_angle = int(angle) % 360  # Ensuring angle is an integer
+            sensor_data[adjusted_angle] = min(sensor_data[adjusted_angle], distance)
 
-        if isinstance(self.us_data, dict):
-            for angle, distance in self.us_data.items():
-                adjusted_angle = angle % 360
-                sensor_data[adjusted_angle] = min(sensor_data[adjusted_angle], distance)
+        if self.us_thread.is_alive():
+            self.us_thread.join()  # Ensure the ultrasonic sweep is complete
+
+        for angle, distance in self.us_data.items():
+            adjusted_angle = int(angle) % 360  # Ensuring angle is an integer
+            sensor_data[adjusted_angle] = min(sensor_data[adjusted_angle], distance)
 
         logging.debug(f"Merged Sensor Data: {sensor_data}")
         return sensor_data
 
     def check_for_obstacles(self):
         self.start_ultrasonic_sweep()
-        self.get_lidar_data()
-        if self.us_thread is not None:
-            self.us_thread.join()
-        sensor_data = self.merge_sensor_data()
-        logging.debug(f"Obstacle Check: {sensor_data}")
-        return sensor_data
+        self.get_lidar_data()  # This call can be non-blocking since we're joining the thread later
+        return self.merge_sensor_data()  # Merging will happen after ultrasonic sweep is complete

@@ -30,11 +30,28 @@ class VectorFieldHistogram:
         self.threshold = 300
 
     def compute_histogram(self, sensor_data):
+        # Validate sensor_data as a numpy array with the correct shape
+        if not isinstance(sensor_data, np.ndarray):
+            raise ValueError("sensor_data must be a numpy array")
+        if sensor_data.shape != (360,):
+            raise ValueError("sensor_data must have a shape of (360,)")
+
+        # Initialize the histogram
         histogram = np.zeros(360 // self.cell_size)
+
+        # Compute the histogram
         for angle in range(360):
             cell_index = angle // self.cell_size
-            if sensor_data[angle] < self.threshold:
+            distance = sensor_data[angle]
+
+            # Skip if the distance is not a finite number
+            if not np.isfinite(distance):
+                continue
+            
+            # Accumulate the histogram count if the distance is below the threshold
+            if distance < self.threshold:
                 histogram[cell_index] += 1
+
         return histogram
 
     def find_safe_direction(self, histogram, current_heading):
