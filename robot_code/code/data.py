@@ -2,7 +2,12 @@ import serial
 import time
 
 # Setup serial connection
-ser = serial.Serial('COM3', 19200, timeout=1)  # Update the COM port as necessary
+# Define the serial port and baud rate
+serial_port = '/dev/ttyUSB0'  # Change this to match the port of your device
+baud_rate = 9600  # Change this to match the baud rate of your device
+
+# Open the serial port
+ser = serial.Serial(serial_port, baud_rate)
 
 def read_serial_data():
     if ser.in_waiting > 0:
