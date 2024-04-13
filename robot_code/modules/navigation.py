@@ -126,24 +126,30 @@ def get_current_gps():
             print("Waiting for valid GPS data...")
 
 def get_current_orientation():
-    with data_lock:
-        return current_orientation.copy()
+    while True:
+        with data_lock:
+            if 'yaw' in current_orientation and current_orientation['yaw'] is not None:
+                print(f"Orientation Data Retrieved: Yaw = {current_orientation['yaw']}")
+                return current_orientation.copy()
+            print("Waiting for valid orientation data...")
+        time.sleep(1)  # Pause to avoid high CPU usage
+
 
 def get_current_errors():
     with data_lock:
         return current_errors.copy()
 
 def get_current_heading():
-    with data_lock:  # Ensure thread-safe access to the shared data
-        yaw = current_orientation.get('yaw')
-        return yaw
+    while True:
+        with data_lock:
+            yaw = current_orientation.get('yaw')
+            if yaw is not None:
+                print(f"Heading Data Retrieved: Yaw = {yaw}")
+                return yaw
+            print("Waiting for valid heading data...")
+        time.sleep(1)
 
 
-data2 = get_current_errors()
-data3 = get_current_heading()
-print(data2, data3)
-data1 = get_current_gps()
-print(data1, data2, data3)
 
 # Start the serial reading thread
 thread = threading.Thread(target=read_serial_data)
