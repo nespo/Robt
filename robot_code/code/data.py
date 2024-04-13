@@ -1,20 +1,16 @@
-import serial
-import time
+from robot_code.modules.us import get_current_gps, get_current_errors, get_current_orientation # Make sure the module name matches the file name
+from time import sleep
 
-# Define the serial port and baud rate
-serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
-baud_rate = 9600  # Change this to match the baud rate of your Arduino Uno
+while True:
+    # Fetch the latest data from the module
+    gps_data = get_current_gps()
+    imu_data = get_current_orientation()
+    error_data = get_current_errors()  # Optional: fetch error data if relevant
 
-# Open the serial port
-ser = serial.Serial(serial_port, baud_rate)
+    # Print the fetched data
+    print("GPS Data:", gps_data)
+    print("IMU Data:", imu_data)
+    if error_data:  # Check if there's any error data to display
+        print("Error Data:", error_data)
 
-try:
-    # Read data from the serial port
-    while True:
-        line = ser.readline().decode('utf-8').rstrip()  # Read a line of data
-        print("Received:", line)
-        # Add your processing logic here
-
-except KeyboardInterrupt:
-    # Close the serial port when the program is interrupted
-    ser.close()
+    sleep(2)  # Adjust the frequency as needed based on your system's requirements

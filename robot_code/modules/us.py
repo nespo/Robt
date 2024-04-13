@@ -123,10 +123,7 @@ def get_current_orientation():
 def get_current_errors():
     with data_lock:
         return current_errors.copy()
-data2 = get_current_errors()
-print(data2)
-data1 = get_current_gps()
-print(data1, data2)
+
 # Start the serial reading thread
 thread = threading.Thread(target=read_serial_data)
 thread.daemon = True
