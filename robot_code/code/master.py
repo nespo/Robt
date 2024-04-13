@@ -90,11 +90,17 @@ class RobotController:
             while not self.reached_goal():
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
+                print(sensor_data)
 
                 histogram = self.vfh.compute_histogram(sensor_data)
+                if histogram:
+                    print("Histogram created")
                 steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
+                print("Get safe direction")
+
 
                 self.move_robot(steering_direction)
+                print("SEND TO MOVE ROBOT")
                 time.sleep(1)  # Control loop pause for stability
 
         except (KeyboardInterrupt, Exception) as e:
