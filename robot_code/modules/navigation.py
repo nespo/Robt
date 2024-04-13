@@ -19,10 +19,10 @@ data_lock = threading.Lock()
 def read_serial_data():
     buffer = ""
     while True:
-        data = ser.read(ser.in_waiting or 1)
+        data = ser.read(1)  # Read one byte at a time
         if data:
             buffer += data.decode('utf-8', errors='ignore')
-            while '\n' in buffer:
+            if '\n' in buffer:
                 line, buffer = buffer.split('\n', 1)
                 process_line(line.strip())
 
