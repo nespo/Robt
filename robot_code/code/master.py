@@ -78,7 +78,12 @@ class RobotController:
             return (y, x)
         else:
             print("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
-            raise ValueError("GPS coordinates out of grid bounds")
+            # Instead of raising an error, you might handle it like this:
+            x = max(0, min(self.grid.shape[1] - 1, x))
+            y = max(0, min(self.grid.shape[0] - 1, y))
+            print("Adjusted coordinates to fit within bounds: (%d, %d)", y, x)
+            return (y, x)
+
 
 
     def main_loop(self):
