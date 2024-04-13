@@ -1,3 +1,9 @@
+import os, sys
+# Adjust the sys.path to include the parent directory of robot_code
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.join(script_dir, '..', '..')
+sys.path.append(os.path.abspath(parent_dir))
+
 from robot_code.modules.us import get_current_gps, get_current_errors, get_current_orientation # Make sure the module name matches the file name
 from time import sleep
 
@@ -9,6 +15,7 @@ while True:
 
     # Print the fetched data
     print("GPS Data:", gps_data)
+
     print("IMU Data:", imu_data)
     if error_data:  # Check if there's any error data to display
         print("Error Data:", error_data)
