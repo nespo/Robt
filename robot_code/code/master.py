@@ -55,13 +55,13 @@ class RobotController:
     def __init__(self, config):
         self.robot = Robot(config)
         self.lidar_scanner = LidarScanner('/dev/ttyUSB0')
-        self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('trig_pin'), Pin('echo_pin')), {'max_distance': 4000})
+        self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
         self.vfh = VectorFieldHistogram()
         self.scale = 221744
         self.origin = (62.89238, 27.67703)
         self.start = get_current_gps()
-        self.start_position = self.gps_to_grid(self.start['latitude'], self.start['longitude'])
-        self.goal = (34.052235, -118.243683) 
+        self.start_position = self.gps_to_grid(self.start[0], self.start[1])
+        self.goal = (62.878866, 27.637739) 
         self.goal_position = self.gps_to_grid(self.goal[0], self.goal[1])
         self.grid = self.initialize_grid()
         self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
