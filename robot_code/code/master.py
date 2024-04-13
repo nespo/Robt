@@ -137,12 +137,16 @@ class RobotController:
         current_position = get_current_gps()
         return np.linalg.norm(np.array([current_position[0], current_position[1]]) - np.array(self.goal_position)) < 0.0001
 
-    def move_robot(self, steering_direction):
+    '''def move_robot(self, steering_direction):
         if steering_direction < -10:
             self.robot.turn_left(50)
         elif steering_direction > 10:
             self.robot.turn_right(50)
         else:
+            self.robot.forward(50)'''
+    
+    def move_robot(self, steering_direction):
+        if steering_direction:
             self.robot.forward(50)
 
 
