@@ -107,7 +107,7 @@ class RobotController:
             while not self.reached_goal():
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
-                print(sensor_data)
+                print("SENSOR DATA", sensor_data)
 
                 histogram = self.vfh.compute_histogram(sensor_data)
                 if histogram:
