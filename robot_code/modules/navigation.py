@@ -115,6 +115,7 @@ def convert_to_decimal(degrees_minutes, direction):
 
 def get_current_gps():
     time.sleep(2)
+    print(current_gps)
     with data_lock:
         if len(current_gps) != 0:
             lan = current_gps.get('latitude')
