@@ -73,11 +73,11 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = int((longitude - self.origin[1]) * self.scale)
         y = int((latitude - self.origin[0]) * self.scale)
-        logging.info("Trying to convert GPS (%f, %f) to grid coordinates (%d, %d).", latitude, longitude, y, x)
+        print("Trying to convert GPS (%f, %f) to grid coordinates (%d, %d).", latitude, longitude, y, x)
         if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
             return (y, x)
         else:
-            logging.error("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
+            print("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
             raise ValueError("GPS coordinates out of grid bounds")
 
 
