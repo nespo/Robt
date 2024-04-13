@@ -24,7 +24,6 @@ from robot_code.modules.navigation import get_current_gps, get_current_heading
 # Setup enhanced logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 class VectorFieldHistogram:
     def __init__(self):
         self.cell_size = 10
@@ -59,11 +58,12 @@ class RobotController:
         self.vfh = VectorFieldHistogram()
         self.scale = 221744
         self.origin = (62.89238, 27.67703)
+        self.grid = self.initialize_grid()  # Initialize grid before using it
+
         self.start = get_current_gps()
         self.start_position = self.gps_to_grid(self.start[0], self.start[1])
-        self.goal = (62.878866, 27.637739) 
+        self.goal = (62.878866, 27.637739)
         self.goal_position = self.gps_to_grid(self.goal[0], self.goal[1])
-        self.grid = self.initialize_grid()
         self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
 
     def initialize_grid(self):
@@ -73,18 +73,17 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = int((longitude - self.origin[1]) * self.scale)
         y = int((latitude - self.origin[0]) * self.scale)
-        print("Trying to convert GPS (%f, %f) to grid coordinates (%d, %d).", latitude, longitude, y, x)
+        logging.info("Trying to convert GPS (%f, %f) to grid coordinates (%d, %d).", latitude, longitude, y, x)
         if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
             return (y, x)
         else:
-            print("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
-            # Instead of raising an error, you might handle it like this:
+            logging.error("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
+            # Handle the situation where coordinates are out of bounds
+            # Option 1: Adjust to nearest valid coordinate
             x = max(0, min(self.grid.shape[1] - 1, x))
             y = max(0, min(self.grid.shape[0] - 1, y))
-            print("Adjusted coordinates to fit within bounds: (%d, %d)", y, x)
+            logging.warning("Adjusted coordinates to fit within bounds: (%d, %d)", y, x)
             return (y, x)
-
-
 
     def main_loop(self):
         try:
