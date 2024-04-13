@@ -109,15 +109,21 @@ class RobotController:
                 sensor_data = self.obstacle_checker.check_for_obstacles()
                 print("SENSOR DATA", sensor_data)
 
+                # Compute the histogram
                 histogram = self.vfh.compute_histogram(sensor_data)
-                if histogram:
+                
+                # Change from 'if histogram:' to 'if np.any(histogram > 0):'
+                # to check if any bins in the histogram have a count greater than 0.
+                if np.any(histogram > 0): 
                     print("Histogram created")
-                steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
-                print("Get safe direction")
 
+                # The find_safe_direction method expects a histogram and a heading.
+                # Ensure it can handle empty or zero histograms.
+                steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
+                print("Safe direction calculated:", steering_direction)
 
                 self.move_robot(steering_direction)
-                print("SEND TO MOVE ROBOT")
+                print("Command sent to move robot")
                 time.sleep(1)  # Control loop pause for stability
 
         except (KeyboardInterrupt, Exception) as e:
@@ -125,6 +131,7 @@ class RobotController:
             print("Shutting down robot...")
             self.robot.stop()
             self.lidar_scanner.close()
+
 
     def reached_goal(self):
         current_position = get_current_gps()
