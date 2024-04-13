@@ -80,18 +80,3 @@ class ObstacleChecker:
         self.us_thread.join()  # Ensure ultrasonic data collection is complete
         return self.merge_sensor_data()
 
-# Configuration
-config = {
-    'max_distance': 4000,  # in mm
-}
-
-# Usage
-lidar_scanner = LidarScanner('/dev/ttyUSB0')
-# Instantiate Ultrasonic with actual pins defined (trig and echo pins need to be specified correctly)
-us = Ultrasonic(Pin('trig_pin'), Pin('echo_pin'))  
-try:
-    obstacle_checker = ObstacleChecker(lidar_scanner, us, config)
-    sensor_data = obstacle_checker.check_for_obstacles()
-    print("Sensor Data:", sensor_data)
-finally:
-    lidar_scanner.close()
