@@ -3,7 +3,7 @@ import threading
 import serial
 
 # Setup serial connection
-serial_port = 'COM3'
+serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
 baud_rate = 19200
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
 
@@ -114,7 +114,9 @@ def convert_to_decimal(degrees_minutes, direction):
 
 def get_current_gps():
     with data_lock:
-        return current_gps.copy()
+        lan = current_gps.get('latitude')
+        lon = current_gps.get('longitude')
+        return lan, lon
 
 def get_current_orientation():
     with data_lock:
