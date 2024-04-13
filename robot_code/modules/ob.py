@@ -4,15 +4,6 @@ import logging
 from threading import Thread
 from rplidar import RPLidar, RPLidarException
 
-import os, sys
-# Adjust the sys.path to include the parent directory of robot_code
-script_dir = os.path.dirname(__file__)
-parent_dir = os.path.join(script_dir, '..', '..')
-sys.path.append(os.path.abspath(parent_dir))
-
-from robot_code.modules.pin import Pin
-from robot_code.modules.ultrasonic import Ultrasonic
-
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -30,18 +21,16 @@ class LidarScanner:
         try:
             for scan in self.lidar.iter_scans():
                 scan_data = {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
-                yield scan_data  # Use yield instead of return
+                yield scan_data
         except RPLidarException as e:
             logging.error(f"Lidar scanning error: {e}")
             self.close()
             raise
 
-
     def close(self):
         self.lidar.stop()
         self.lidar.disconnect()
         logging.info("LIDAR disconnected safely.")
-
 
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
@@ -54,14 +43,13 @@ class ObstacleChecker:
 
     def get_lidar_data(self):
         try:
-            # This will get only the first set of scan data available from the generator
             self.lidar_data = next(self.lidar.iter_scans(), {})
-            print(f"Lidar Data: {self.lidar_data}")
+            logging.debug(f"Lidar Data: {self.lidar_data}")
         except StopIteration:
-            print("No more LIDAR scans available.")
+            logging.error("No more LIDAR scans available.")
             self.lidar_data = {}
         except RPLidarException as e:
-            print(f"Error obtaining LIDAR data: {e}")
+            logging.error(f"Error obtaining LIDAR data: {e}")
             self.lidar_data = {}
 
     def full_ultrasonic_sweep(self):
@@ -77,20 +65,17 @@ class ObstacleChecker:
 
     def merge_sensor_data(self):
         sensor_data = np.full(360, self.config['max_distance'])
-        
         if isinstance(self.lidar_data, dict):
             for angle, distance in self.lidar_data.items():
-                # Make sure the angle is within 0-359
                 adjusted_angle = angle % 360
                 sensor_data[adjusted_angle] = distance
 
         if isinstance(self.us_data, dict):
             for angle, distance in self.us_data.items():
-                # Make sure the angle is within 0-359
                 adjusted_angle = angle % 360
                 sensor_data[adjusted_angle] = min(sensor_data[adjusted_angle], distance)
 
-        print(f"Merged Sensor Data: {sensor_data}")
+        logging.debug(f"Merged Sensor Data: {sensor_data}")
         return sensor_data
 
     def check_for_obstacles(self):
@@ -99,13 +84,13 @@ class ObstacleChecker:
         if self.us_thread is not None:
             self.us_thread.join()
         sensor_data = self.merge_sensor_data()
-        print(f"Obstacle Check: {sensor_data}")
+        logging.debug(f"Obstacle Check: {sensor_data}")
         return sensor_data
 
-# Assuming the rest of the classes and setup is correct
+# ... (rest of your classes and setup)
+
+# Test the ObstacleChecker class
 if __name__ == '__main__':
-    # Set up for testing
-    # Replace 'COM_PORT' with your LIDAR's actual port
     lidar_scanner = LidarScanner('/dev/ttyUSB0')
     ultrasonic_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
     config = {'max_distance': 4000}
