@@ -114,13 +114,16 @@ def convert_to_decimal(degrees_minutes, direction):
     return decimal
 
 def get_current_gps():
-    time.sleep(2)
-    print(current_gps)
-    with data_lock:
-        if len(current_gps) != 0:
-            lan = current_gps.get('latitude')
-            lon = current_gps.get('longitude')
-            return lan, lon
+    while True:  # Loop indefinitely until GPS data is available
+        time.sleep(2)  # Wait a bit before checking again to reduce CPU usage
+        with data_lock:  # Assuming 'data_lock' is a threading.Lock() to synchronize access to 'current_gps'
+            if 'latitude' in current_gps and 'longitude' in current_gps:
+                lat = current_gps.get('latitude')
+                lon = current_gps.get('longitude')
+                if lat is not None and lon is not None:
+                    print(f"GPS Data Retrieved: Latitude = {lat}, Longitude = {lon}")
+                    return lat, lon
+            print("Waiting for valid GPS data...")
 
 def get_current_orientation():
     with data_lock:
