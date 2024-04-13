@@ -30,10 +30,12 @@ class LidarScanner:
         try:
             for scan in self.lidar.iter_scans():
                 scan_data = {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
-                return scan_data
+                yield scan_data  # Use yield instead of return
         except RPLidarException as e:
             logging.error(f"Lidar scanning error: {e}")
-            return {}
+            self.close()
+            raise
+
 
     def close(self):
         self.lidar.stop()
