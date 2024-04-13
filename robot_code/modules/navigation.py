@@ -139,7 +139,9 @@ def get_current_heading():
         return yaw
 
 data1 = get_current_gps()
-print(data1)
+data2 = get_current_errors()
+data3 = get_current_heading()
+print(data1, data2, data3)
 
 # Start the serial reading thread
 thread = threading.Thread(target=read_serial_data)
