@@ -138,6 +138,8 @@ def get_current_heading():
         yaw = current_orientation.get('yaw')
         return yaw
 
+data1 = get_current_gps()
+print(data1)
 
 # Start the serial reading thread
 thread = threading.Thread(target=read_serial_data)
