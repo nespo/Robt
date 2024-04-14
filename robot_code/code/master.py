@@ -153,6 +153,7 @@ class RobotController:
                 time.sleep(1)  # Control loop pause for stability
         except (KeyboardInterrupt, Exception) as e:
             logging.error("An error occurred: %s", e)
+        finally:
             self.robot.stop()
             self.lidar_scanner.close()
             print("Emergency stop! The robot and lidar scanner have been turned off.")
