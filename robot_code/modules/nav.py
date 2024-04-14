@@ -4,6 +4,7 @@ import serial
 import time
 
 # Setup serial connection
+#serial_port = 'COM5'
 serial_port = '/dev/ttyACM0'  # Update to match your device port in Windows
 baud_rate = 19200
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
@@ -96,7 +97,7 @@ thread = threading.Thread(target=read_serial_data)
 thread.daemon = True
 thread.start()
 
-'''if __name__ == "__main__":
+if __name__ == "__main__":
     while True:
         gps = get_current_gps()
         orientation = get_current_heading()
@@ -106,4 +107,4 @@ thread.start()
             print("Orientation:", orientation)
         if not gps and not orientation:
             print("Waiting for new data...")
-        time.sleep(1)'''
+        time.sleep(1)
