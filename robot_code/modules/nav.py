@@ -60,7 +60,8 @@ def update_imu_data(line):
 
 def get_current_gps():
     while True:  # Loop indefinitely until GPS data is available
-        time.sleep(2)  # Wait a bit before checking again to reduce CPU usage
+        time.sleep(2) 
+        print("Trying to get GPS data: ", current_gps) # Wait a bit before checking again to reduce CPU usage
         with data_lock:  # Assuming 'data_lock' is a threading.Lock() to synchronize access to 'current_gps'
             if 'Latitude' in current_gps and 'Longitude' in current_gps:
                 lat = current_gps.get('Latitude')
