@@ -67,17 +67,26 @@ def update_error_data(line):
         print(f"Invalid error data: {line}")
 
 def get_current_gps():
-    while True:  # Loop indefinitely until GPS data is available
-        time.sleep(2)  # Wait a bit before checking again to reduce CPU usage
-        with data_lock: 
-            #print(current_gps) # Assuming 'data_lock' is a threading.Lock() to synchronize access to 'current_gps'
-            if 'Latitude' in current_gps.keys() and 'Longitude' in current_gps.keys():
+    start_time = time.time()
+    timeout = 30  # Set a reasonable timeout
+    print("Attempting to retrieve GPS data...")
+    while True:
+        with data_lock:
+            if 'Latitude' in current_gps and 'Longitude' in current_gps:
                 lat = current_gps.get('Latitude')
                 lon = current_gps.get('Longitude')
                 if lat is not None and lon is not None:
                     print(f"GPS Data Retrieved: Latitude = {lat}, Longitude = {lon}")
                     return lat, lon
-            print("Waiting for valid GPS data...")
+            else:
+                print("GPS data not yet available in dictionary.")
+            if time.time() - start_time > timeout:
+                print("Timeout reached, GPS data not available.")
+                break
+        print("Waiting for valid GPS data...")
+        time.sleep(2)
+    return None, None
+
 
 
 def get_current_orientation():
