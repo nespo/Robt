@@ -23,6 +23,8 @@ from robot_code.modules.a_star import a_star
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def calculate_midpoint(loc1, loc2):
+    return ((loc1[0] + loc2[0]) / 2, (loc1[1] + loc2[1]) / 2)
 
 class VectorFieldHistogram:
     def __init__(self, cell_size=10, threshold=300):
@@ -58,22 +60,26 @@ class RobotController:
         self.lidar_scanner = LidarScanner('/dev/ttyUSB0')
         self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
         self.vfh = VectorFieldHistogram()
-        self.scale = 221744
-        self.origin = (62.89238, 27.67703)
-        self.grid = self.initialize_grid()
-        self.start = get_current_gps()
-        self.start_position = self.gps_to_grid(self.start[0], self.start[1])
-        self.goal = (62.878866, 27.637739)
-        self.goal_position = self.gps_to_grid(self.goal[0], self.goal[1])
+        
+        self.current_loc = get_current_gps()
+        self.goal_loc = (62.878866, 27.637739)
+        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 1000, 2000)
+        
+        self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
+        self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
         
         if self.start_position and self.goal_position:
             self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
         else:
             self.planned_path = None
-            print("Invalid start or goal position for A* algorithm.")
+            logging.error("Invalid start or goal position for A* algorithm.")
 
-    def initialize_grid(self):
-        return np.zeros((2000, 2000))  # Dummy grid for simplification
+    def initialize_grid(self, current_loc, goal_loc, expected_range_m, grid_resolution):
+        origin = calculate_midpoint(current_loc, goal_loc)
+        scale = grid_resolution / expected_range_m
+        grid_shape = (grid_resolution, grid_resolution)
+        grid = np.zeros(grid_shape)
+        return origin, scale, grid
 
     def gps_to_grid(self, latitude, longitude):
         x = int((longitude - self.origin[1]) * self.scale)
@@ -82,7 +88,6 @@ class RobotController:
             return (y, x)
         else:
             logging.error("Adjusted GPS coordinates out of grid bounds: %f, %f", latitude, longitude)
-            # Adjust coordinates to the nearest point within bounds
             x = max(0, min(self.grid.shape[1] - 1, x))
             y = max(0, min(self.grid.shape[0] - 1, y))
             return (y, x)
