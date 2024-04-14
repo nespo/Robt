@@ -30,17 +30,18 @@ def read_serial_data():
 def process_line(line):
     print(f"Processing line: {line}")  # Debug output
 
-    # Handle IMU and Error data first
-    if any(x in line for x in ['Roll', 'Pitch', 'Yaw', 'Error']):
-        update_imu_or_error_data(line)
-    
-    # Extract GPS part if present and handle it
-    gps_data = re.search(r"(?<=GPS:).*$", line)
-    if gps_data:
-        gps_sentences = re.split('(?=\$)', gps_data.group(0))  # Split but keep the delimiter
-        for sentence in gps_sentences:
-            if sentence.strip():
-                parse_gps_data(sentence.strip())
+    # Check for IMU data first, if no IMU data then check for GPS data
+    if 'Roll' in line or 'Pitch' in line or 'Yaw' in line:
+        update_imu_data(line)
+    else:
+        # This will ignore anything before the first '$' character
+        gps_data = re.search(r"\$(.*)", line)
+        if gps_data:
+            gps_sentences = re.split('(?=\$)', gps_data.group(0))  # Split but keep the delimiter
+            for sentence in gps_sentences:
+                if sentence.strip():
+                    parse_gps_data(sentence.strip())
+
 
 
 def update_imu_or_error_data(part):
@@ -103,24 +104,28 @@ def handle_gpgga(sentence):
 def update_imu_data(line):
     print(f"Updating IMU data: {line}")  # Debug output
     try:
-        data_parts = re.findall(r"[-\d.]+", line)
-        if len(data_parts) == 3:
-            roll, pitch, yaw = map(float, data_parts)
+        imu_parts = re.search(r"Roll:(-?\d+\.\d+); Pitch:(-?\d+\.\d+); Yaw:(-?\d+\.\d+)", line)
+        if imu_parts:
+            roll, pitch, yaw = map(float, imu_parts.groups())
             with data_lock:
                 current_orientation['roll'] = roll
                 current_orientation['pitch'] = pitch
                 current_orientation['yaw'] = yaw
         else:
-            print("IMU data format error: Incorrect number of values")
+            print("IMU data format error: Incorrect number of values or format")
     except ValueError as e:
-        print(f"IMU data format error: {e}")
-
+        print(f"IMU data parsing error: {e}")
 
 def update_error_data(line):
     print(f"Updating error data: {line}")  # Debug output
-    errors = {k: float(v) for k, v in re.findall(r"(\w+): (-?\d+\.\d+)", line)}
-    with data_lock:
-        current_errors.update(errors)
+    errors = re.findall(r"(\w+Error\w+): (-?\d+\.\d+)", line)
+    if errors:
+        with data_lock:
+            for key, value in errors:
+                current_errors[key] = float(value)
+    else:
+        print("Error data format not recognized")
+
 
 def convert_to_decimal(degrees_minutes, direction):
     degrees = int(degrees_minutes[:-7])
