@@ -72,7 +72,7 @@ def get_current_gps():
     print("Attempting to retrieve GPS data...")
     while True:
         with data_lock:
-            if 'Latitude' in current_gps and 'Longitude' in current_gps:
+            if 'Latitude' in current_gps.keys() and 'Longitude' in current_gps.keys():
                 lat = current_gps.get('Latitude')
                 lon = current_gps.get('Longitude')
                 if lat is not None and lon is not None:
