@@ -74,19 +74,16 @@ class RobotController:
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
         
-        if self.start_position and self.goal_position and self.start_position != self.goal_position:
-            self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
-            print("Path planned using A*")
-        else:
-            self.planned_path = None
-            if self.start_position and self.goal_position:
-                if self.start_position != self.goal_position or self.has_obstacles():
-                    self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
-                    print("Path planned using A*")
-                else:
-                    print("Start and Goal positions are identical; no path needed.")
+        self.planned_path = None
+        self.current_path_index = 0  # Initialize path index
+        if self.start_position and self.goal_position:
+            if self.start_position != self.goal_position:
+                self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
+                print("Path planned using A*")
             else:
-                logging.error("Invalid start or goal position for A* algorithm.")
+                print("Start and Goal positions are identical; no path needed.")
+        else:
+            logging.error("Invalid start or goal position for A* algorithm.")
 
 
 
@@ -118,18 +115,20 @@ class RobotController:
 
 
     def calculate_path_direction(self):
-        if self.current_path_index < len(self.planned_path):
-            next_position = self.planned_path[self.current_path_index]
+        if self.planned_path and self.current_path_index < len(self.planned_path):
             current_position = self.gps_to_grid(*get_current_gps())
+            next_position = self.planned_path[self.current_path_index]
             if next_position == current_position:
                 self.current_path_index += 1
                 if self.current_path_index < len(self.planned_path):
                     next_position = self.planned_path[self.current_path_index]
+                else:
+                    return None  # No more steps in the path
 
-            direction_angle = np.degrees(np.arctan2(next_position[0] - current_position[0], next_position[1] - current_position[1]))
+            direction_angle = np.degrees(np.arctan2(next_position[1] - current_position[1], next_position[0] - current_position[0]))
             print("Direction_angle: ", direction_angle)
             return (direction_angle + 360) % 360
-        return None  # Path completed or error
+        return None  # Path completed or not initialized properly
 
     def main_loop(self):
         try:
