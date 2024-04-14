@@ -68,7 +68,7 @@ class RobotController:
         self.current_loc = get_current_gps()
         self.goal_loc = (62.8788865, 27.6378785)
         print(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
-        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 1000, 2000)
+        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 200)
         
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
