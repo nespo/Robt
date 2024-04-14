@@ -149,7 +149,8 @@ def get_current_heading():
             print("Waiting for valid heading data...")
         time.sleep(1)
 
-
+print(get_current_gps())
+print(get_current_errors)
 
 # Start the serial reading thread
 thread = threading.Thread(target=read_serial_data)
