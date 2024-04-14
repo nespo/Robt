@@ -30,21 +30,18 @@ def read_serial_data():
 def process_line(line):
     print(f"Processing line: {line}")  # Debug output
 
-    # First, split by any time or non-NMEA content
-    parts = line.split(';')
-    gps_part = None
-    for part in parts:
-        if '$' in part:
-            gps_part = part  # Only take the part after the last ';' that includes '$'
-        else:
-            update_imu_or_error_data(part)
-
-    # If we've isolated a GPS part, handle it
-    if gps_part:
-        gps_sentences = re.split('(?=\$)', gps_part)  # Split but keep the delimiter
+    # Handle IMU and Error data first
+    if any(x in line for x in ['Roll', 'Pitch', 'Yaw', 'Error']):
+        update_imu_or_error_data(line)
+    
+    # Extract GPS part if present and handle it
+    gps_data = re.search(r"(?<=GPS:).*$", line)
+    if gps_data:
+        gps_sentences = re.split('(?=\$)', gps_data.group(0))  # Split but keep the delimiter
         for sentence in gps_sentences:
             if sentence.strip():
                 parse_gps_data(sentence.strip())
+
 
 def update_imu_or_error_data(part):
     if any(x in part for x in ['Roll', 'Pitch', 'Yaw']):
@@ -62,17 +59,22 @@ def parse_gps_data(line):
 
 def valid_nmea_sentence(nmea_sentence):
     try:
+        # Ignore any non-NMEA prefix data
+        if not nmea_sentence.startswith('$'):
+            return False
+
         data, checksum = nmea_sentence.split('*')
         calculated_checksum = 0
         for char in data[1:]:  # Skip the initial '$'
             calculated_checksum ^= ord(char)
-        is_valid = hex(calculated_checksum)[2:].upper() == checksum.upper()
+        is_valid = hex(calculated_checksum)[2:].upper().zfill(2) == checksum.upper()
         if not is_valid:
             print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
         return is_valid
     except ValueError:
         print(f"Failed to split sentence for checksum: {nmea_sentence}")
         return False
+
 
 def handle_gprmc(sentence):
     print(f"Handling GPRMC: {sentence}")  # Debug output
@@ -101,13 +103,18 @@ def handle_gpgga(sentence):
 def update_imu_data(line):
     print(f"Updating IMU data: {line}")  # Debug output
     try:
-        roll, pitch, yaw = map(float, re.findall(r"[-\d.]+", line))
-        with data_lock:
-            current_orientation['roll'] = roll
-            current_orientation['pitch'] = pitch
-            current_orientation['yaw'] = yaw
+        data_parts = re.findall(r"[-\d.]+", line)
+        if len(data_parts) == 3:
+            roll, pitch, yaw = map(float, data_parts)
+            with data_lock:
+                current_orientation['roll'] = roll
+                current_orientation['pitch'] = pitch
+                current_orientation['yaw'] = yaw
+        else:
+            print("IMU data format error: Incorrect number of values")
     except ValueError as e:
         print(f"IMU data format error: {e}")
+
 
 def update_error_data(line):
     print(f"Updating error data: {line}")  # Debug output
