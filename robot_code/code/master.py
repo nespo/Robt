@@ -74,33 +74,44 @@ class RobotController:
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
         
-        if self.start_position and self.goal_position:
+        if self.start_position and self.goal_position and self.start_position != self.goal_position:
             self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
             print("Path planned using A*")
         else:
             self.planned_path = None
-            logging.error("Invalid start or goal position for A* algorithm.")
+            if self.start_position == self.goal_position:
+                print("Start and Goal positions are identical; no path needed.")
+            else:
+                logging.error("Invalid start or goal position for A* algorithm.")
+
 
     def initialize_grid(self, current_loc, goal_loc, expected_range_m, grid_resolution):
+    # Dynamically adjust the grid resolution based on the actual distance
+        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000  # Convert degrees to meters roughly
+        if actual_distance_m < expected_range_m:
+            scale = grid_resolution / actual_distance_m  # Increase scale for finer resolution
+        else:
+            scale = grid_resolution / expected_range_m
+
         origin = calculate_midpoint(current_loc, goal_loc)
-        scale = grid_resolution / expected_range_m
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
         print(f"Grid initialized with origin {origin}, scale {scale}")
         return origin, scale, grid
 
+
     def gps_to_grid(self, latitude, longitude):
-        x = int((longitude - self.origin[1]) * self.scale)
-        y = int((latitude - self.origin[0]) * self.scale)
-        if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
-            print(f"GPS ({latitude}, {longitude}) converted to grid position: ({y}, {x})")
-            return (y, x)
+        x = (longitude - self.origin[1]) * self.scale
+        y = (latitude - self.origin[0]) * self.scale
+        grid_x = int(round(x))
+        grid_y = int(round(y))
+        if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
+            print(f"GPS ({latitude}, {longitude}) converted to precise grid position: ({grid_y}, {grid_x})")
+            return (grid_y, grid_x)
         else:
             logging.error("Adjusted GPS coordinates out of grid bounds: %f, %f", latitude, longitude)
-            x = max(0, min(self.grid.shape[1] - 1, x))
-            y = max(0, min(self.grid.shape[0] - 1, y))
-            print(f"Adjusted grid position: ({y}, {x})")
-            return (y, x)
+            return None
+
 
     def calculate_path_direction(self):
         if self.current_path_index < len(self.planned_path):
