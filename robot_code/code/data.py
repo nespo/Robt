@@ -1,23 +1,23 @@
-import os, sys
-# Adjust the sys.path to include the parent directory of robot_code
-script_dir = os.path.dirname(__file__)
-parent_dir = os.path.join(script_dir, '..', '..')
-sys.path.append(os.path.abspath(parent_dir))
+import serial
+import time
 
-from robot_code.modules.us import get_current_gps, get_current_errors, get_current_orientation # Make sure the module name matches the file name
-from time import sleep
+# Setup serial connection
+ser = serial.Serial(serial_port, baud_rate, timeout=1)  # Update the COM port as necessary
 
-while True:
-    # Fetch the latest data from the module
-    gps_data = get_current_gps()
-    imu_data = get_current_orientation()
-    error_data = get_current_errors()  # Optional: fetch error data if relevant
+def read_serial_data():
+    if ser.in_waiting > 0:
+        try:
+            # Attempt to read and decode the line; ignore errors or replace them
+            data = ser.readline().decode('utf-8', errors='replace').strip()
+            if data:
+                print(data)
+        except UnicodeDecodeError as e:
+            print(f"Decode error: {e}, data received may be corrupted")
 
-    # Print the fetched data
-    print("GPS Data:", gps_data)
-
-    print("IMU Data:", imu_data)
-    if error_data:  # Check if there's any error data to display
-        print("Error Data:", error_data)
-
-    sleep(2)  # Adjust the frequency as needed based on your system's requirements
+try:
+    while True:
+        read_serial_data()
+        time.sleep(0.1)  # Adjust sleep time based on how frequent you need the data
+except KeyboardInterrupt:
+    ser.close()
+    print("Serial connection closed.")
