@@ -4,8 +4,8 @@ import logging
 from threading import Thread
 from rplidar import RPLidar, RPLidarException
 
+# Assuming __file__ and other relative path initializations are handled correctly above this snippet
 import os, sys
-# Adjust the sys.path to include the parent directory of robot_code
 script_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
@@ -13,7 +13,6 @@ sys.path.append(os.path.abspath(parent_dir))
 from robot_code.modules.pin import Pin
 from robot_code.modules.ultrasonic import Ultrasonic
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class LidarScanner:
