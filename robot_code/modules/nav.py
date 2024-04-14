@@ -67,9 +67,7 @@ def update_error_data(line):
         print(f"Invalid error data: {line}")
 
 def get_current_gps():
-    start_time = time.time()
-    timeout = 30  # Set a reasonable timeout
-    print("Attempting to retrieve GPS data...")
+    time.sleep(2)
     while True:
         with data_lock:
             if 'Latitude' in current_gps.keys() and 'Longitude' in current_gps.keys():
@@ -80,12 +78,9 @@ def get_current_gps():
                     return lat, lon
             else:
                 print("GPS data not yet available in dictionary.")
-            if time.time() - start_time > timeout:
-                print("Timeout reached, GPS data not available.")
-                break
         print("Waiting for valid GPS data...")
         time.sleep(2)
-    return None, None
+    
 
 
 
@@ -112,14 +107,3 @@ def get_current_heading():
 thread = threading.Thread(target=read_serial_data)
 thread.daemon = True
 thread.start()
-# Main script execution
-if __name__ == '__main__':
-    try:
-        while True:
-            print("GPS Data:", get_current_gps())
-            print("Orientation Data:", get_current_orientation())
-            print("Error Data:", get_current_errors())
-            time.sleep(1)
-    except KeyboardInterrupt:
-        ser.close()
-        print("Serial connection closed.")
