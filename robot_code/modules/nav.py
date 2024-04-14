@@ -112,4 +112,14 @@ def get_current_heading():
 thread = threading.Thread(target=read_serial_data)
 thread.daemon = True
 thread.start()
-
+# Main script execution
+if __name__ == '__main__':
+    try:
+        while True:
+            print("GPS Data:", get_current_gps())
+            print("Orientation Data:", get_current_orientation())
+            print("Error Data:", get_current_errors())
+            time.sleep(1)
+    except KeyboardInterrupt:
+        ser.close()
+        print("Serial connection closed.")
