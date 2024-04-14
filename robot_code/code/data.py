@@ -1,6 +1,8 @@
 import serial
 import time
 
+serial_port = '/dev/ttyACM0'  # Update to match your device
+baud_rate = 19200
 # Setup serial connection
 ser = serial.Serial(serial_port, baud_rate, timeout=1)  # Update the COM port as necessary
 
