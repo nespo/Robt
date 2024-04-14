@@ -76,25 +76,34 @@ class RobotController:
         
         self.planned_path = None
         self.current_path_index = 0  # Initialize path index
-        if self.start_position and self.goal_position:
-            if self.start_position != self.goal_position:
-                self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
-                print("Path planned using A*")
+        if self.start_position == self.goal_position:
+            if np.linalg.norm(np.array(self.current_loc) - np.array(self.goal_loc)) * 111000 > 1:  # more than 1 meter apart
+                logging.info("Close proximity path planning activated.")
+                self.planned_path = [self.start_position, self.goal_position]  # simple direct path
             else:
-                print("Start and Goal positions are identical; no path needed.")
+                logging.info("Start and Goal positions are identical; no path needed.")
         else:
-            logging.error("Invalid start or goal position for A* algorithm.")
+            self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
+            if self.planned_path:
+                logging.info("Path planned using A*")
+            else:
+                logging.error("A* pathfinding failed.")
 
 
 
-    def initialize_grid(self, current_loc, goal_loc, expected_range_m, grid_resolution):
-        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000  # Convert degrees to meters roughly
-        scale = grid_resolution / max(actual_distance_m, 10)  # Avoid too large scale for very small distances
+
+    def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
+        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000  # Convert degrees to meters
+        if actual_distance_m < 1:  # if the distance is less than 1 meter, increase sensitivity
+            actual_distance_m = max(actual_distance_m, 0.1)  # prevent division by zero or very small numbers
+        scale = base_resolution / actual_distance_m
         origin = calculate_midpoint(current_loc, goal_loc)
+        grid_resolution = int(base_resolution * (expected_range_m / max(actual_distance_m, 10)))
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
-        print(f"Grid initialized with origin {origin}, scale {scale}")
+        logging.info(f"Grid initialized with origin {origin}, scale {scale}, resolution {grid_resolution}")
         return origin, scale, grid
+
 
 
     def gps_to_grid(self, latitude, longitude):
@@ -103,15 +112,13 @@ class RobotController:
         grid_x = int(round(x))
         grid_y = int(round(y))
         if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
-            print(f"GPS ({latitude}, {longitude}) converted to precise grid position: ({grid_y}, {grid_x})")
+            logging.info(f"GPS ({latitude}, {longitude}) converted to grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
         else:
-            # Adjust position to stay within grid bounds
             grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
             grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
-            print(f"Adjusted grid position: ({grid_y}, {grid_x})")
+            logging.warning(f"Adjusted grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
-
 
 
     def calculate_path_direction(self):
