@@ -1,6 +1,7 @@
 import re
 import threading
 import serial
+import time
 
 # Setup serial connection
 serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
@@ -18,38 +19,46 @@ data_lock = threading.Lock()
 def read_serial_data():
     buffer = ""
     while True:
-        data = ser.read(ser.in_waiting or 1)
+        data = ser.read(1)  # Read one byte at a time
         if data:
             buffer += data.decode('utf-8', errors='ignore')
-            while '\n' in buffer:
+            if '\n' in buffer:
                 line, buffer = buffer.split('\n', 1)
+                print(f"Read line: {line.strip()}")  # Debug output
                 process_line(line.strip())
 
 def process_line(line):
-    if 'Time' in line:
-        line = line.split(';', 1)[-1].strip()
-    #print("Processed Line:", line)  # Debug output
+    print(f"Processing line: {line}")  # Debug output
 
-    # Improved GPS handling with separate processing for concatenated sentences
-    if '$' in line:
-        gps_sentences = re.split('(?=\$)', line)  # Split but keep the delimiter
+    # First, split by any time or non-NMEA content
+    parts = line.split(';')
+    gps_part = None
+    for part in parts:
+        if '$' in part:
+            gps_part = part  # Only take the part after the last ';' that includes '$'
+        else:
+            update_imu_or_error_data(part)
+
+    # If we've isolated a GPS part, handle it
+    if gps_part:
+        gps_sentences = re.split('(?=\$)', gps_part)  # Split but keep the delimiter
         for sentence in gps_sentences:
             if sentence.strip():
                 parse_gps_data(sentence.strip())
-    else:
-        if any(x in line for x in ['Roll', 'Pitch', 'Yaw']):
-            update_imu_data(line)
-        elif 'Error' in line:
-            update_error_data(line)
+
+def update_imu_or_error_data(part):
+    if any(x in part for x in ['Roll', 'Pitch', 'Yaw']):
+        update_imu_data(part)
+    elif 'Error' in part:
+        update_error_data(part)
 
 def parse_gps_data(line):
+    print(f"Parsing GPS data: {line}")  # Debug output
     if valid_nmea_sentence(line):
         if '$GPRMC' in line:
             handle_gprmc(line)
         elif '$GPGGA' in line:
             handle_gpgga(line)
-    '''else:
-        print(f"Invalid NMEA sentence: {line}")'''
 
 def valid_nmea_sentence(nmea_sentence):
     try:
@@ -59,14 +68,14 @@ def valid_nmea_sentence(nmea_sentence):
             calculated_checksum ^= ord(char)
         is_valid = hex(calculated_checksum)[2:].upper() == checksum.upper()
         if not is_valid:
-            #print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
-            pass
+            print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
         return is_valid
     except ValueError:
-        #print(f"Failed to split sentence for checksum: {nmea_sentence}")
+        print(f"Failed to split sentence for checksum: {nmea_sentence}")
         return False
 
 def handle_gprmc(sentence):
+    print(f"Handling GPRMC: {sentence}")  # Debug output
     parts = sentence.split(',')
     if len(parts) > 8 and parts[2] == 'A':
         latitude = convert_to_decimal(parts[3], parts[4])
@@ -78,6 +87,7 @@ def handle_gprmc(sentence):
             current_gps['date'] = parts[9]
 
 def handle_gpgga(sentence):
+    print(f"Handling GPGGA: {sentence}")  # Debug output
     parts = sentence.split(',')
     if len(parts) > 6 and parts[6] != '0':
         latitude = convert_to_decimal(parts[2], parts[3])
@@ -89,6 +99,7 @@ def handle_gpgga(sentence):
             current_gps['altitude'] = altitude
 
 def update_imu_data(line):
+    print(f"Updating IMU data: {line}")  # Debug output
     try:
         roll, pitch, yaw = map(float, re.findall(r"[-\d.]+", line))
         with data_lock:
@@ -96,10 +107,10 @@ def update_imu_data(line):
             current_orientation['pitch'] = pitch
             current_orientation['yaw'] = yaw
     except ValueError as e:
-        #print(f"IMU data format error: {e}")
-        pass
+        print(f"IMU data format error: {e}")
 
 def update_error_data(line):
+    print(f"Updating error data: {line}")  # Debug output
     errors = {k: float(v) for k, v in re.findall(r"(\w+): (-?\d+\.\d+)", line)}
     with data_lock:
         current_errors.update(errors)
@@ -111,6 +122,7 @@ def convert_to_decimal(degrees_minutes, direction):
     if direction in ['S', 'W']:
         decimal = -decimal
     return decimal
+
 
 def get_current_gps():
     with data_lock:
