@@ -4,9 +4,11 @@ import serial
 import time
 
 # Setup serial connection
-serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
+'''serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
 baud_rate = 19200
-ser = serial.Serial(serial_port, baud_rate, timeout=1)
+ser = serial.Serial(serial_port, baud_rate, timeout=1)'''
+
+ser = serial.Serial('COM3', 19200, timeout=1) 
 
 # Shared structures to hold GPS and IMU data
 current_gps = {}

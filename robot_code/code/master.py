@@ -18,7 +18,7 @@ from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 from robot_code.modules.obstacle import LidarScanner, ObstacleChecker
 from robot_code.code.config import config
-from robot_code.modules.navigation import get_current_gps, get_current_heading
+from robot_code.modules.nav import get_current_gps, get_current_heading
 from robot_code.modules.a_star import a_star
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
