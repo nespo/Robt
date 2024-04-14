@@ -66,7 +66,7 @@ class RobotController:
         self.vfh = VectorFieldHistogram()
         
         self.current_loc = get_current_gps()
-        self.goal_loc = (62.8784413,27.6367249)
+        self.goal_loc = (62.878772,27.637455) #(62.8784413,27.6367249)
         print(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
         
