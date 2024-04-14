@@ -24,12 +24,15 @@ from robot_code.modules.a_star import a_star
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def calculate_midpoint(loc1, loc2):
-    return ((loc1[0] + loc2[0]) / 2, (loc1[1] + loc2[1]) / 2)
+    midpoint = ((loc1[0] + loc2[0]) / 2, (loc1[1] + loc2[1]) / 2)
+    print(f"Calculated midpoint: {midpoint}")
+    return midpoint
 
 class VectorFieldHistogram:
     def __init__(self, cell_size=10, threshold=300):
         self.cell_size = cell_size
         self.threshold = threshold
+        print("Initialized Vector Field Histogram")
 
     def compute_histogram(self, sensor_data):
         histogram = np.zeros(360 // self.cell_size)
@@ -38,6 +41,7 @@ class VectorFieldHistogram:
             distance = sensor_data[angle]
             if distance < self.threshold:
                 histogram[cell_index] += 1
+        print("Computed histogram:", histogram)
         return histogram
 
     def find_safe_direction(self, histogram, current_heading):
@@ -51,7 +55,7 @@ class VectorFieldHistogram:
             best_direction = (best_direction - current_heading) % 360
             if best_direction > 180:
                 best_direction -= 360
-
+        print(f"Safe direction found: {best_direction} with obstacle count: {min_obstacle_count}")
         return best_direction
     
 class RobotController:
@@ -63,13 +67,16 @@ class RobotController:
         
         self.current_loc = get_current_gps()
         self.goal_loc = (62.878866, 27.637739)
+        print(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 1000, 2000)
         
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
+        print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
         
         if self.start_position and self.goal_position:
             self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
+            print("Path planned using A*")
         else:
             self.planned_path = None
             logging.error("Invalid start or goal position for A* algorithm.")
@@ -79,17 +86,20 @@ class RobotController:
         scale = grid_resolution / expected_range_m
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
+        print(f"Grid initialized with origin {origin}, scale {scale}")
         return origin, scale, grid
 
     def gps_to_grid(self, latitude, longitude):
         x = int((longitude - self.origin[1]) * self.scale)
         y = int((latitude - self.origin[0]) * self.scale)
         if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
+            print(f"GPS ({latitude}, {longitude}) converted to grid position: ({y}, {x})")
             return (y, x)
         else:
             logging.error("Adjusted GPS coordinates out of grid bounds: %f, %f", latitude, longitude)
             x = max(0, min(self.grid.shape[1] - 1, x))
             y = max(0, min(self.grid.shape[0] - 1, y))
+            print(f"Adjusted grid position: ({y}, {x})")
             return (y, x)
 
     def calculate_path_direction(self):
@@ -102,6 +112,7 @@ class RobotController:
                     next_position = self.planned_path[self.current_path_index]
 
             direction_angle = np.degrees(np.arctan2(next_position[0] - current_position[0], next_position[1] - current_position[1]))
+            print("Direction_angle: ", direction_angle)
             return (direction_angle + 360) % 360
         return None  # Path completed or error
 
@@ -109,30 +120,39 @@ class RobotController:
         try:
             while not self.reached_goal() and self.planned_path:
                 current_heading = get_current_heading()
+                print(f"Current heading: {current_heading}")
                 sensor_data = self.obstacle_checker.check_for_obstacles()
                 histogram = self.vfh.compute_histogram(sensor_data)
-                
-                if np.any(histogram > 0): 
+                print(f"Obstacle histogram: {histogram}")
+
+                if np.any(histogram > 0):
                     steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
+                    print(f"Obstacle detected, steering direction: {steering_direction}")
                 else:
                     steering_direction = self.calculate_path_direction()
+                    print(f"No obstacles detected, following path, steering direction: {steering_direction}")
 
                 self.move_robot(steering_direction)
+                print(f"Moving robot towards: {steering_direction}")
                 time.sleep(1)  # Control loop pause for stability
         except (KeyboardInterrupt, Exception) as e:
             logging.error("An error occurred: %s", e)
             self.robot.stop()
             self.lidar_scanner.close()
-
+            print("Emergency stop! The robot and lidar scanner have been turned off.")
 
     def reached_goal(self):
         if not self.planned_path:
+            print("No planned path. Goal is considered reached.")
             return True
         current_position = get_current_gps()
-        return np.linalg.norm(np.array(current_position) - np.array(self.goal_position)) < 0.0001
-    
+        goal_reached = np.linalg.norm(np.array(current_position) - np.array(self.goal_position)) < 0.0001
+        print(f"Current GPS position: {current_position}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
+        return goal_reached
+
     def move_robot(self, steering_direction):
         if steering_direction is None:
+            print("No valid steering direction provided. Robot will not move.")
             return  # No valid direction to move
 
         error = steering_direction - get_current_heading()
@@ -140,13 +160,17 @@ class RobotController:
             error -= 360
         elif error < -180:
             error += 360
+        print(f"Steering direction: {steering_direction}, Heading error: {error}")
 
         if error > 10:
             self.robot.turn_right(min(50, error))
+            print(f"Turning right: {min(50, error)} degrees")
         elif error < -10:
             self.robot.turn_left(min(50, -error))
+            print(f"Turning left: {min(50, -error)} degrees")
         else:
             self.robot.forward(50)
+            print("Moving forward")
 
 if __name__ == "__main__":
     robot_controller = RobotController(config)
