@@ -79,20 +79,20 @@ class RobotController:
             print("Path planned using A*")
         else:
             self.planned_path = None
-            if self.start_position == self.goal_position:
-                print("Start and Goal positions are identical; no path needed.")
+            if self.start_position and self.goal_position:
+                if self.start_position != self.goal_position or self.has_obstacles():
+                    self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
+                    print("Path planned using A*")
+                else:
+                    print("Start and Goal positions are identical; no path needed.")
             else:
                 logging.error("Invalid start or goal position for A* algorithm.")
 
 
-    def initialize_grid(self, current_loc, goal_loc, expected_range_m, grid_resolution):
-    # Dynamically adjust the grid resolution based on the actual distance
-        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000  # Convert degrees to meters roughly
-        if actual_distance_m < expected_range_m:
-            scale = grid_resolution / actual_distance_m  # Increase scale for finer resolution
-        else:
-            scale = grid_resolution / expected_range_m
 
+    def initialize_grid(self, current_loc, goal_loc, expected_range_m, grid_resolution):
+        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000  # Convert degrees to meters roughly
+        scale = grid_resolution / max(actual_distance_m, 10)  # Avoid too large scale for very small distances
         origin = calculate_midpoint(current_loc, goal_loc)
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
@@ -103,14 +103,13 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        # Convert to meters or another unit consistent with your grid resolution
-        grid_x = int(round(x))  # Round to the nearest grid cell after scaling
+        grid_x = int(round(x))
         grid_y = int(round(y))
         if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
             print(f"GPS ({latitude}, {longitude}) converted to precise grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
         else:
-            # Handle out of bounds goal position
+            # Adjust position to stay within grid bounds
             grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
             grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
             print(f"Adjusted grid position: ({grid_y}, {grid_x})")
