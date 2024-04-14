@@ -23,6 +23,7 @@ from robot_code.modules.a_star import a_star
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 class VectorFieldHistogram:
     def __init__(self, cell_size=10, threshold=300):
         self.cell_size = cell_size
@@ -80,8 +81,11 @@ class RobotController:
         if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
             return (y, x)
         else:
-            print("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
-            return None
+            logging.error("Adjusted GPS coordinates out of grid bounds: %f, %f", latitude, longitude)
+            # Adjust coordinates to the nearest point within bounds
+            x = max(0, min(self.grid.shape[1] - 1, x))
+            y = max(0, min(self.grid.shape[0] - 1, y))
+            return (y, x)
 
     def calculate_path_direction(self):
         if self.current_path_index < len(self.planned_path):
