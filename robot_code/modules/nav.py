@@ -97,7 +97,7 @@ thread = threading.Thread(target=read_serial_data)
 thread.daemon = True
 thread.start()
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
     while True:
         gps = get_current_gps()
         orientation = get_current_heading()
@@ -107,4 +107,4 @@ if __name__ == "__main__":
             print("Orientation:", orientation)
         if not gps and not orientation:
             print("Waiting for new data...")
-        time.sleep(1)
+        time.sleep(1)'''
