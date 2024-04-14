@@ -29,7 +29,7 @@ def read_serial_data():
 def process_line(line):
     if 'Time' in line:
         line = line.split(';', 1)[-1].strip()
-    #print("Processed Line:", line)  # Debug output
+    print("Processed Line:", line)  # Debug output
 
     # Improved GPS handling with separate processing for concatenated sentences
     if '$' in line:
@@ -60,11 +60,11 @@ def valid_nmea_sentence(nmea_sentence):
             calculated_checksum ^= ord(char)
         is_valid = hex(calculated_checksum)[2:].upper() == checksum.upper()
         if not is_valid:
-            #print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
+            print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
             pass
         return is_valid
     except ValueError:
-        #print(f"Failed to split sentence for checksum: {nmea_sentence}")
+        print(f"Failed to split sentence for checksum: {nmea_sentence}")
         return False
 
 def handle_gprmc(sentence):
@@ -97,7 +97,7 @@ def update_imu_data(line):
             current_orientation['pitch'] = pitch
             current_orientation['yaw'] = yaw
     except ValueError as e:
-        #print(f"IMU data format error: {e}")
+        print(f"IMU data format error: {e}")
         pass
 
 def update_error_data(line):
