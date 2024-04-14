@@ -4,7 +4,7 @@ import serial
 import time
 
 # Setup serial connection
-serial_port = 'COM5'  # Update to match your device port in Windows
+serial_port = '/dev/ttyACM0'  # Update to match your device port in Windows
 baud_rate = 19200
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
 
