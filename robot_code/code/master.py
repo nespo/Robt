@@ -8,7 +8,7 @@ import os
 import sys
 
 # Ensure correct library import paths
-script_dir = os.path.dirname(__file__)
+script_dir = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
 
@@ -64,8 +64,12 @@ class RobotController:
         self.start_position = self.gps_to_grid(self.start[0], self.start[1])
         self.goal = (62.878866, 27.637739)
         self.goal_position = self.gps_to_grid(self.goal[0], self.goal[1])
-        self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
-        self.current_path_index = 0
+        
+        if self.start_position and self.goal_position:
+            self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
+        else:
+            self.planned_path = None
+            print("Invalid start or goal position for A* algorithm.")
 
     def initialize_grid(self):
         return np.zeros((2000, 2000))  # Dummy grid for simplification
@@ -76,7 +80,8 @@ class RobotController:
         if 0 <= x < self.grid.shape[1] and 0 <= y < self.grid.shape[0]:
             return (y, x)
         else:
-            return None  # Out of grid bounds
+            print("GPS coordinates out of grid bounds: (%f, %f)", latitude, longitude)
+            return None
 
     def calculate_path_direction(self):
         if self.current_path_index < len(self.planned_path):
@@ -93,7 +98,7 @@ class RobotController:
 
     def main_loop(self):
         try:
-            while not self.reached_goal():
+            while not self.reached_goal() and self.planned_path:
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
                 histogram = self.vfh.compute_histogram(sensor_data)
@@ -101,21 +106,22 @@ class RobotController:
                 if np.any(histogram > 0): 
                     steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
                 else:
-                    # No obstacles, follow planned path
                     steering_direction = self.calculate_path_direction()
 
                 self.move_robot(steering_direction)
                 time.sleep(1)  # Control loop pause for stability
-
         except (KeyboardInterrupt, Exception) as e:
             logging.error("An error occurred: %s", e)
             self.robot.stop()
             self.lidar_scanner.close()
 
+
     def reached_goal(self):
+        if not self.planned_path:
+            return True
         current_position = get_current_gps()
         return np.linalg.norm(np.array(current_position) - np.array(self.goal_position)) < 0.0001
-
+    
     def move_robot(self, steering_direction):
         if steering_direction is None:
             return  # No valid direction to move
