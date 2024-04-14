@@ -103,14 +103,19 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x))
+        # Convert to meters or another unit consistent with your grid resolution
+        grid_x = int(round(x))  # Round to the nearest grid cell after scaling
         grid_y = int(round(y))
         if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
             print(f"GPS ({latitude}, {longitude}) converted to precise grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
         else:
-            logging.error("Adjusted GPS coordinates out of grid bounds: %f, %f", latitude, longitude)
-            return None
+            # Handle out of bounds goal position
+            grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
+            grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
+            print(f"Adjusted grid position: ({grid_y}, {grid_x})")
+            return (grid_y, grid_x)
+
 
 
     def calculate_path_direction(self):
