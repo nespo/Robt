@@ -104,9 +104,9 @@ def get_current_heading():
         with data_lock:
             yaw = current_orientation.get('Yaw')
             if yaw is not None:
-                #print(f"Heading Data Retrieved: Yaw = {yaw}")
+                print(f"Heading Data Retrieved: Yaw = {yaw}")
                 return yaw
-            #print("Waiting for valid heading data...")
+            print("Waiting for valid heading data...")
 
 # Thread to handle serial data reading
 thread = threading.Thread(target=read_serial_data)
