@@ -1,7 +1,6 @@
 import serial
 import time
 
-# Setup serial connection
 serial_port = '/dev/ttyACM0'  # Change this to match the port of your Arduino Uno
 baud_rate = 19200
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
