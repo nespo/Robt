@@ -156,23 +156,25 @@ class RobotController:
             while not self.reached_goal():
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
-                # Ensure sensor data is handled properly
-                valid_sensor_data = np.nan_to_num(sensor_data, nan=np.inf)  # Convert NaNs to inf
-                histogram = self.vfh.compute_histogram(valid_sensor_data)
 
+                # Clean up sensor data to handle infinite values properly
+                valid_sensor_data = np.where(sensor_data == np.inf, 1000, sensor_data)  # Replace 'inf' with a large number, e.g., 1000 meters
+
+                histogram = self.vfh.compute_histogram(valid_sensor_data)
                 if np.any(histogram > 0):
-                    steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, self.dwa.generate_velocities(self.current_speed, self.current_turn_rate), self.calculate_path_direction())
-                    # Ensure there is no invalid minimum distance
-                    if np.min(valid_sensor_data[valid_sensor_data < np.inf]) < 50:
-                        self.reverse_and_reroute()
-                    elif steering_direction is None:
-                        self.halt_and_reassess()
-                    else:
+                    path_direction = self.calculate_path_direction()
+                    velocities = self.dwa.generate_velocities(self.current_speed, self.current_turn_rate)
+                    steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, velocities, path_direction)
+
+                    if steering_direction is not None and steering_speed is not None:
                         self.move_robot(steering_direction, steering_speed)
+                    else:
+                        self.halt_and_reassess()
                 else:
                     path_direction = self.calculate_path_direction()
                     if path_direction is not None:
                         self.move_robot(path_direction, self.speed_pid.setpoint)
+
                 time.sleep(1)
                 self.update_path_if_needed()
         except (KeyboardInterrupt, Exception) as e:
