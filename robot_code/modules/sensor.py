@@ -32,17 +32,14 @@ class SensorFusion:
         self.kalman_filters = [KalmanFilter() for _ in range(360)]
 
     def fuse_data(self, lidar_data, ultrasonic_data):
-        fused_data = np.full(360, np.inf)
+        fused_data = np.full(360, np.inf)  # Initialize with 'inf'
         for angle in range(360):
-            if angle in lidar_data and angle in ultrasonic_data:
-                lidar_value = lidar_data[angle]
-                ultrasonic_value = ultrasonic_data[angle]
-                # Make sure only to process valid measurements
-                if lidar_value is not None and ultrasonic_value is not None:
-                    measurement = min(lidar_value, ultrasonic_value)
-                    # Update with a valid integer index
-                    index = int(angle)  # Ensure the index is integer
-                    fused_data[index] = self.kalman_filters[index].update(measurement)
+            lidar_value = lidar_data.get(angle, np.inf)
+            ultrasonic_value = ultrasonic_data.get(angle, np.inf)
+            # Use valid measurements only
+            if lidar_value < np.inf or ultrasonic_value < np.inf:
+                measurement = min(lidar_value, ultrasonic_value)
+                fused_data[angle] = self.kalman_filters[angle].update(measurement)
         return fused_data
 
 
@@ -63,6 +60,11 @@ class LidarScanner:
             self.connected = False
             raise SystemExit(e)
 
+    def handle_lidar_error(self):
+        logging.error("Handling LIDAR error, attempting reconnect.")
+        self.close()
+        self.try_to_connect()
+
     def iter_scans(self):
         if not self.connected:
             logging.error("LIDAR not connected for scanning.")
@@ -73,20 +75,6 @@ class LidarScanner:
         except RPLidarException as e:
             logging.error(f"Lidar scanning error: {e}")
             self.handle_lidar_error()
-
-    def handle_lidar_error(self):
-        self.close()
-        self.try_to_connect()
-
-    def close(self):
-        if self.connected:
-            try:
-                self.lidar.stop()
-                self.lidar.disconnect()
-                self.connected = False
-                logging.info("LIDAR disconnected safely.")
-            except RPLidarException as e:
-                logging.error(f"Failed to properly shutdown LIDAR: {e}")
 
 
 class ObstacleChecker:
@@ -123,10 +111,9 @@ class ObstacleChecker:
             time.sleep(self.us.SERVO_SET_DELAY)
 
     def start_ultrasonic_sweep(self):
-        if self.us_thread and self.us_thread.is_alive():
-            self.us_thread.join()
-        self.us_thread = Thread(target=self.full_ultrasonic_sweep)
-        self.us_thread.start()
+        if self.us_thread is None or not self.us_thread.is_alive():
+            self.us_thread = Thread(target=self.full_ultrasonic_sweep)
+            self.us_thread.start()
 
     def merge_sensor_data(self):
         if self.us_thread.is_alive():
@@ -137,7 +124,9 @@ class ObstacleChecker:
 
     def check_for_obstacles(self):
         self.start_ultrasonic_sweep()
-        self.get_lidar_data()
-        fused_sensor_data = self.merge_sensor_data()
-        logging.debug(f"Fused Sensor Data: {fused_sensor_data}")
-        return fused_sensor_data
+        self.get_lidar_data()  # Refresh lidar data
+        if self.us_thread.is_alive():
+            self.us_thread.join()
+        fused_data = self.sensor_fusion.fuse_data(self.lidar_data, self.us_data)
+        print("FUSED DATA: ", fused_data)
+        return fused_data
