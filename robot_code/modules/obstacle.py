@@ -39,24 +39,26 @@ class LidarScanner:
             self.handle_lidar_error()
 
     def handle_lidar_error(self):
-        self.lidar.stop()
-        self.lidar.disconnect()
+        self.close()  # Ensure lidar is stopped and disconnected properly
         try:
-            time.sleep(2)  # Wait before attempting to reconnect
-            self.lidar.connect()  # Attempt to reconnect
+            time.sleep(5)  # Wait before attempting to reconnect
+            self.lidar.connect()  # Reattempt to connect
             self.connected = True
             logging.info("LIDAR reconnected.")
         except RPLidarException as e:
             logging.error(f"Failed to reconnect to LIDAR: {e}")
             self.connected = False
-            raise SystemExit("Reconnection failed.")
+            raise
 
     def close(self):
         if self.connected:
-            self.lidar.stop()
-            self.lidar.disconnect()
-            self.connected = False
-            logging.info("LIDAR disconnected safely.")
+            try:
+                self.lidar.stop()
+                self.lidar.disconnect()
+                self.connected = False
+                logging.info("LIDAR disconnected safely.")
+            except RPLidarException as e:
+                logging.error(f"Failed to properly shutdown LIDAR: {e}")
 
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
