@@ -130,18 +130,18 @@ class RobotController:
 
 
     def gps_to_grid(self, latitude, longitude):
-        x = (longitude - self.origin[1]) * self.scale
-        y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x))  # Ensure indices are integers
-        grid_y = int(round(y))
-        if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
+        try:
+            x = (longitude - self.origin[1]) * self.scale
+            y = (latitude - self.origin[0]) * self.scale
+            grid_x = int(round(x))
+            grid_y = int(round(y))
+            assert 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0], "Index out of bounds"
             logging.info(f"GPS ({latitude}, {longitude}) converted to grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
-        else:
-            grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
-            grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
-            logging.warning(f"Adjusted grid position: ({grid_y}, {grid_x})")
-            return (grid_y, grid_x)
+        except AssertionError as e:
+            logging.error(f"Grid index error: {e}")
+            return None
+
 
 
     def calculate_path_direction(self):
