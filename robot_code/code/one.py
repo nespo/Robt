@@ -47,19 +47,19 @@ class VFHPlus:
         print(histogram)
         return histogram
 
-    def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
-        safe_trajectories = []
-        for speed, angle in velocities:
-            sector_index = (angle // (360 // self.sectors)) % self.sectors
-            if histogram[sector_index] == 0:  # No obstacles in the sector
-                cost = self.calculate_cost(angle, speed, goal_direction)
-                safe_trajectories.append((cost, speed, angle))
-        return min(safe_trajectories, default=(None, None))[1:]  # Safely return the trajectory with the least cost
+    def find_safe_direction(self, histogram, current_heading):
+        best_direction, min_obstacle_count = None, float('inf')
+        for i, count in enumerate(histogram):
+            if count < min_obstacle_count:
+                min_obstacle_count = count
+                best_direction = i * self.cell_size + (self.cell_size // 2)
 
-    def calculate_cost(self, angle, speed, goal_direction):
-        angle_cost = min((angle - goal_direction) % 360, (goal_direction - angle) % 360)
-        speed_cost = max(0, 1 - speed / 100)  # Assuming max speed is 100
-        return angle_cost + speed_cost
+        if best_direction is not None:
+            best_direction = (best_direction - current_heading) % 360
+            if best_direction > 180:
+                best_direction -= 360
+        print(f"Safe direction found: {best_direction} with obstacle count: {min_obstacle_count}")
+        return best_direction
 
 
 class DynamicWindowApproach:
@@ -164,20 +164,15 @@ class RobotController:
 
                 histogram = self.vfh.compute_histogram(valid_sensor_data)
                 if np.any(histogram > 0):
-                    path_direction = self.calculate_path_direction()
-                    velocities = self.dwa.generate_velocities(self.current_speed, self.current_turn_rate)
-                    _, steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, velocities, path_direction)
-
-                    if steering_direction is not None and steering_speed is not None:
-                        self.move_robot(steering_direction, steering_speed)
-                    else:
-                        self.halt_and_reassess()
+                    steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
+                    print(f"Obstacle detected, steering direction: {steering_direction}")
                 else:
-                    path_direction = self.calculate_path_direction()
-                    if path_direction is not None:
-                        self.move_robot(path_direction, self.speed_pid.setpoint)
+                    steering_direction = self.calculate_path_direction()
+                    print(f"No obstacles detected, following path, steering direction: {steering_direction}")
 
-                time.sleep(1)
+                self.move_robot(steering_direction)
+                print(f"Moving robot towards: {steering_direction}")
+                time.sleep(1)  # Control loop pause for stability
                 self.update_path_if_needed()
         except (KeyboardInterrupt, Exception) as e:
             logging.error(f"An error occurred: {e}")
