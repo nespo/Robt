@@ -40,12 +40,11 @@ class VFHPlus:
         sector_angle = 360 // self.sectors
         for angle in range(360):
             sector_index = int(angle // sector_angle)  # Force integer index
-            distance = sensor_data.get(angle, float('inf'))  # Safely access data with default
+            distance = sensor_data[angle] if angle < len(sensor_data) else float('inf')
             if distance < self.threshold:
                 histogram[sector_index] += 1
         logging.debug(f"Computed VFH+ histogram: {histogram}")
         return histogram
-
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
         safe_trajectories = []
@@ -63,6 +62,7 @@ class VFHPlus:
         angle_cost = min((angle - goal_direction) % 360, (goal_direction - angle) % 360)
         speed_cost = max(0, 1 - speed / 100)  # Assuming max speed is 100
         return angle_cost + speed_cost
+
 
 class DynamicWindowApproach:
     def __init__(self, max_speed, max_turn_rate):
