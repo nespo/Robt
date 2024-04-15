@@ -15,6 +15,29 @@ from robot_code.modules.ultrasonic import Ultrasonic
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+class KalmanFilter:
+    def __init__(self):
+        self.estimated_distance = 0
+        self.error_estimate = 1
+        self.error_measure = 1
+
+    def update(self, measurement):
+        kalman_gain = self.error_estimate / (self.error_estimate + self.error_measure)
+        self.estimated_distance = self.estimated_distance + kalman_gain * (measurement - self.estimated_distance)
+        self.error_estimate = (1 - kalman_gain) * self.error_estimate
+        return self.estimated_distance
+
+class SensorFusion:
+    def __init__(self):
+        self.kalman_filters = [KalmanFilter() for _ in range(360)]
+
+    def fuse_data(self, lidar_data, ultrasonic_data):
+        fused_data = np.full(360, float('inf'))
+        for angle in range(360):
+            measurement = min(lidar_data.get(angle, float('inf')), ultrasonic_data.get(angle, float('inf')))
+            fused_data[angle] = self.kalman_filters[angle].update(measurement)
+        return fused_data
+
 class LidarScanner:
     def __init__(self, port):
         self.lidar = RPLidar(port)
@@ -47,7 +70,6 @@ class LidarScanner:
             self.connected = False
             logging.info("LIDAR disconnected safely.")
 
-
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
         self.lidar = lidar
@@ -56,6 +78,7 @@ class ObstacleChecker:
         self.us_thread = None
         self.lidar_data = {}
         self.us_data = {}
+        self.sensor_fusion = SensorFusion()
 
     def get_lidar_data(self):
         if not self.lidar.connected:
@@ -87,21 +110,13 @@ class ObstacleChecker:
         self.us_thread.start()
 
     def merge_sensor_data(self):
-        sensor_data = np.full(360, self.config['max_distance'], dtype=np.float32)
-        weights = {'lidar': 0.7, 'ultrasonic': 0.3}
-        
         if self.us_thread.is_alive():
             self.us_thread.join()
-
-        for angle in range(360):
-            lidar_distance = self.lidar_data.get(angle, self.config['max_distance'])
-            ultrasonic_distance = self.us_data.get(angle, self.config['max_distance'])
-            sensor_data[angle] = (lidar_distance * weights['lidar'] + ultrasonic_distance * weights['ultrasonic']) / (weights['lidar'] + weights['ultrasonic'])
-
-        logging.debug(f"Merged Sensor Data: {sensor_data}")
-        return sensor_data
+        return self.sensor_fusion.fuse_data(self.lidar_data, self.us_data)
 
     def check_for_obstacles(self):
         self.start_ultrasonic_sweep()
         self.get_lidar_data()
-        return self.merge_sensor_data()
+        fused_sensor_data = self.merge_sensor_data()
+        logging.debug(f"Fused Sensor Data: {fused_sensor_data}")
+        return fused_sensor_data
