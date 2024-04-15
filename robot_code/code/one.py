@@ -40,11 +40,18 @@ class VFHPlus:
         sector_angle = 360 // self.sectors
         for angle in range(360):
             sector_index = int(angle // sector_angle)  # Force integer index
-            distance = sensor_data[angle] if angle < len(sensor_data) else float('inf')
-            if distance < self.threshold:
-                histogram[sector_index] += 1
+            if angle < len(sensor_data):
+                distance = sensor_data[angle]
+                if distance < self.threshold:
+                    if sector_index < len(histogram):  # Ensure sector_index is within bounds
+                        histogram[sector_index] += 1
+                    else:
+                        logging.error(f"Sector index {sector_index} out of bounds for histogram.")
+            else:
+                logging.warning(f"Angle {angle} exceeds sensor data length {len(sensor_data)}.")
         logging.debug(f"Computed VFH+ histogram: {histogram}")
         return histogram
+
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
         safe_trajectories = []
