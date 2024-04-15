@@ -107,29 +107,15 @@ class RobotController:
         self.steering_threshold = 10  # Degrees within which the robot should move forward
         self.max_turn_angle = 50     # Max degrees the robot should turn at once
         self.current_loc = get_current_gps()
-        self.goal_loc = (62.878868,27.637853)  # Update with actual target GPS
+        self.goal_loc = (62.878868, 27.637853)  # Update with actual target GPS
         logging.info(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
-        logging.info(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
         self.planned_path = a_star(self.start_position, self.goal_position, self.grid) if self.start_position != self.goal_position else []
+        self.current_path_index = 0
+        logging.info(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
-
-        if self.start_position == self.goal_position:
-            if np.linalg.norm(np.array(self.current_loc) - np.array(self.goal_loc)) * 111000 > 1:  # more than 1 meter apart
-                logging.info("Close proximity path planning activated.")
-                self.planned_path = [self.start_position, self.goal_position]
-            else:
-                logging.info("Start and Goal positions are identical; no path needed.")
-        else:
-            self.planned_path = a_star(self.start_position, self.goal_position, self.grid)
-            if self.planned_path:
-                logging.info("Path planned using A*")
-            else:
-                logging.error("A* pathfinding failed.")
-
-    # Dynamic grid scaling based on area size for improved path precision
     def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
         actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000
         actual_distance_m = max(actual_distance_m, 0.1)
@@ -165,7 +151,6 @@ class RobotController:
                     next_position = self.planned_path[self.current_path_index]
                 else:
                     return None  # Path complete
-
             direction_angle = np.degrees(np.arctan2(next_position[1] - current_position[1], next_position[0] - current_position[0]))
             return (direction_angle + 360) % 360
         return None
@@ -176,7 +161,6 @@ class RobotController:
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
                 histogram = self.vfh.compute_histogram(sensor_data)
-
                 if np.any(histogram > 0):
                     steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, self.dwa.generate_velocities(self.current_speed, self.current_turn_rate), self.calculate_path_direction())
                     if np.min(sensor_data) < 50:
@@ -189,7 +173,6 @@ class RobotController:
                     path_direction = self.calculate_path_direction()
                     if path_direction is not None:
                         self.move_robot(path_direction, self.speed_pid.setpoint)
-
                 time.sleep(1)  # Control loop pause
                 self.update_path_if_needed()
         except (KeyboardInterrupt, Exception) as e:
@@ -198,7 +181,6 @@ class RobotController:
             self.lidar_scanner.close()
             logging.info("Emergency stop! The robot and lidar scanner have been turned off.")
 
-    # Real-time path recalculation if path deviation or new obstacles are detected
     def update_path_if_needed(self):
         current_position = self.gps_to_grid(*get_current_gps())
         if self.planned_path and current_position != self.planned_path[self.current_path_index]:
@@ -211,7 +193,6 @@ class RobotController:
         logging.info(f"Current GPS position: {current_position}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
         return goal_reached
 
-    # Adaptive robot movement strategy with smooth steering and dynamic speed adjustments
     def move_robot(self, direction, speed):
         current_heading = get_current_heading()
         error = (direction - current_heading + 180) % 360 - 180
@@ -223,14 +204,6 @@ class RobotController:
             self.robot.turn_right(turn_rate, adjusted_speed)
         else:
             self.robot.turn_left(turn_rate, adjusted_speed)
-
-    def check_safety(self, sensor_data):
-        if np.min(sensor_data) < 20:  # Emergency stop threshold
-            self.emergency_stop()
-
-    def emergency_stop(self):
-        logging.info("Emergency stop triggered.")
-        self.robot.stop()
 
     def reverse_and_reroute(self):
         logging.info("Obstacle encountered, reversing and rerouting.")
@@ -244,6 +217,9 @@ class RobotController:
         time.sleep(5)  # Wait and reassess
         self.update_path_if_needed()
 
+    def emergency_stop(self):
+        logging.info("Emergency stop triggered.")
+        self.robot.stop()
 
 
 if __name__ == "__main__":
