@@ -41,11 +41,10 @@ class SensorFusion:
 class LidarScanner:
     def __init__(self, port):
         self.lidar = RPLidar(port)
-        self.connect()
-
-    def connect(self):
+        self.connected = False
         try:
             self.lidar.connect()
+            self.connected = True
             logging.info("LIDAR connected.")
         except RPLidarException as e:
             logging.error(f"Failed to connect to LIDAR: {e}")
