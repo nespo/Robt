@@ -132,8 +132,8 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x))
-        grid_y = int(round(y))
+        grid_x = int(round(x))  # Ensure x-coordinate is an integer
+        grid_y = int(round(y))  # Ensure y-coordinate is an integer
         logging.debug(f"Grid position calculation x: {grid_x}, y: {grid_y}")
         if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
             return (grid_y, grid_x)
@@ -142,7 +142,6 @@ class RobotController:
             adjusted_y = max(0, min(self.grid.shape[0] - 1, grid_y))
             logging.warning(f"Adjusted grid position x: {adjusted_x}, y: {adjusted_y}")
             return (adjusted_y, adjusted_x)
-
 
     def calculate_path_direction(self):
         if self.planned_path and self.current_path_index < len(self.planned_path):
@@ -155,8 +154,9 @@ class RobotController:
                 else:
                     return None  # Path complete
             direction_angle = np.degrees(np.arctan2(next_position[1] - current_position[1], next_position[0] - current_position[0]))
-            return int((direction_angle + 360) % 360)  # Ensure the result is integer
+            return int((direction_angle + 360) % 360)  # Ensure the result is an integer
         return None
+
 
     def main_loop(self):
         try:
