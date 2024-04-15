@@ -29,16 +29,27 @@ class LidarScanner:
 
     def iter_scans(self):
         if not self.connected:
-            logging.error("LIDAR not connected.")
+            logging.error("LIDAR not connected for scanning.")
             return
         try:
             for scan in self.lidar.iter_scans():
-                scan_data = {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
-                yield scan_data
+                yield {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
         except RPLidarException as e:
             logging.error(f"Lidar scanning error: {e}")
-            self.close()
-            raise
+            self.handle_lidar_error()
+
+    def handle_lidar_error(self):
+        self.lidar.stop()
+        self.lidar.disconnect()
+        try:
+            time.sleep(2)  # Wait before attempting to reconnect
+            self.lidar.connect()  # Attempt to reconnect
+            self.connected = True
+            logging.info("LIDAR reconnected.")
+        except RPLidarException as e:
+            logging.error(f"Failed to reconnect to LIDAR: {e}")
+            self.connected = False
+            raise SystemExit("Reconnection failed.")
 
     def close(self):
         if self.connected:
@@ -47,12 +58,12 @@ class LidarScanner:
             self.connected = False
             logging.info("LIDAR disconnected safely.")
 
-
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
         self.lidar = lidar
         self.us = us
         self.config = config
+        self.max_distance = self.config.get('max_distance', 2000)
         self.us_thread = None
         self.lidar_data = {}
         self.us_data = {}
