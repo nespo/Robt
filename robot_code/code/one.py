@@ -157,15 +157,15 @@ class RobotController:
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
 
-                # Clean up sensor data to handle infinite values properly
-                valid_sensor_data = np.where(sensor_data == np.inf, 1000, sensor_data)  # Replace 'inf' with a large number, e.g., 1000 meters
-                print(valid_sensor_data) #Debug code
+                # Ensure all sensor data are finite and replace 'inf' and NaN with a high but finite value
+                valid_sensor_data = np.where(np.isfinite(sensor_data), sensor_data, 1000)
+                print("Valid Sensor Data:", valid_sensor_data)  # Debug print
 
                 histogram = self.vfh.compute_histogram(valid_sensor_data)
                 if np.any(histogram > 0):
                     path_direction = self.calculate_path_direction()
                     velocities = self.dwa.generate_velocities(self.current_speed, self.current_turn_rate)
-                    steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, velocities, path_direction)
+                    _, steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, velocities, path_direction)
 
                     if steering_direction is not None and steering_speed is not None:
                         self.move_robot(steering_direction, steering_speed)
@@ -183,6 +183,7 @@ class RobotController:
             self.robot.stop()
             self.lidar_scanner.close()
             logging.info("Emergency stop! The robot and lidar scanner have been turned off.")
+
 
 
     def update_path_if_needed(self):
