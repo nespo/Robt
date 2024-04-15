@@ -42,37 +42,42 @@ class LidarScanner:
     def __init__(self, port):
         self.lidar = RPLidar(port)
         self.connected = False
+        self.try_to_connect()
+
+    def try_to_connect(self):
         try:
             self.lidar.connect()
             self.connected = True
             logging.info("LIDAR connected.")
         except RPLidarException as e:
             logging.error(f"Failed to connect to LIDAR: {e}")
+            self.connected = False
             raise SystemExit(e)
 
     def iter_scans(self):
-        while True:
-            try:
-                for scan in self.lidar.iter_scans():
-                    yield {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
-            except RPLidarException as e:
-                logging.error(f"Lidar scanning error: {e}")
-                self.handle_lidar_error()
+        if not self.connected:
+            logging.error("LIDAR not connected for scanning.")
+            return
+        try:
+            for scan in self.lidar.iter_scans():
+                yield {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
+        except RPLidarException as e:
+            logging.error(f"Lidar scanning error: {e}")
+            self.handle_lidar_error()
 
     def handle_lidar_error(self):
-        self.lidar.stop()
-        self.lidar.disconnect()
-        try:
-            time.sleep(5)  # Wait before attempting to reconnect
-            self.connect()  # Attempt to reconnect
-        except SystemExit:
-            logging.error("Reconnection failed. Exiting.")
-            raise
+        self.close()
+        self.try_to_connect()
 
     def close(self):
-        self.lidar.stop()
-        self.lidar.disconnect()
-        logging.info("LIDAR disconnected safely.")
+        if self.connected:
+            try:
+                self.lidar.stop()
+                self.lidar.disconnect()
+                self.connected = False
+                logging.info("LIDAR disconnected safely.")
+            except RPLidarException as e:
+                logging.error(f"Failed to properly shutdown LIDAR: {e}")
 
 
 class ObstacleChecker:
