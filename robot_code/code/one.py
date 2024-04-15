@@ -42,10 +42,11 @@ class VFHPlus:
             if angle >= len(sensor_data):
                 continue
             distance = sensor_data[angle]
-            sector_index = int(angle // sector_angle)
-            if sector_index < self.sectors and distance < self.threshold:
+            sector_index = int(angle // sector_angle)  # Explicit integer conversion
+            if 0 <= sector_index < self.sectors:
                 histogram[sector_index] += 1
         return histogram
+
 
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
@@ -127,10 +128,11 @@ class RobotController:
         logging.info(f"Grid initialized with origin {origin}, scale {scale}, resolution {grid_resolution}")
         return origin, scale, grid
 
+
     def gps_to_grid(self, latitude, longitude):
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x))
+        grid_x = int(round(x))  # Ensure indices are integers
         grid_y = int(round(y))
         if 0 <= grid_x < self.grid.shape[1] and 0 <= grid_y < self.grid.shape[0]:
             logging.info(f"GPS ({latitude}, {longitude}) converted to grid position: ({grid_y}, {grid_x})")
@@ -140,6 +142,7 @@ class RobotController:
             grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
             logging.warning(f"Adjusted grid position: ({grid_y}, {grid_x})")
             return (grid_y, grid_x)
+
 
     def calculate_path_direction(self):
         if self.planned_path and self.current_path_index < len(self.planned_path):

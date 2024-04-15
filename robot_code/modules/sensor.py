@@ -123,7 +123,9 @@ class ObstacleChecker:
     def merge_sensor_data(self):
         if self.us_thread.is_alive():
             self.us_thread.join()
-        return self.sensor_fusion.fuse_data(self.lidar_data, self.us_data)
+        fused_data = self.sensor_fusion.fuse_data(self.lidar_data, self.us_data)
+        print(fused_data)
+        return fused_data
 
     def check_for_obstacles(self):
         self.start_ultrasonic_sweep()
