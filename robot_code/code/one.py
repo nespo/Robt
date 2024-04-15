@@ -156,10 +156,14 @@ class RobotController:
             while not self.reached_goal():
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
-                histogram = self.vfh.compute_histogram(sensor_data)
+                # Ensure sensor data is handled properly
+                valid_sensor_data = np.nan_to_num(sensor_data, nan=np.inf)  # Convert NaNs to inf
+                histogram = self.vfh.compute_histogram(valid_sensor_data)
+
                 if np.any(histogram > 0):
                     steering_direction, steering_speed = self.vfh.find_safe_trajectory(histogram, current_heading, self.dwa.generate_velocities(self.current_speed, self.current_turn_rate), self.calculate_path_direction())
-                    if np.min(sensor_data) < 50:
+                    # Ensure there is no invalid minimum distance
+                    if np.min(valid_sensor_data[valid_sensor_data < np.inf]) < 50:
                         self.reverse_and_reroute()
                     elif steering_direction is None:
                         self.halt_and_reassess()
@@ -176,6 +180,7 @@ class RobotController:
             self.robot.stop()
             self.lidar_scanner.close()
             logging.info("Emergency stop! The robot and lidar scanner have been turned off.")
+
 
     def update_path_if_needed(self):
         current_position = self.gps_to_grid(*get_current_gps())
