@@ -76,6 +76,13 @@ class LidarScanner:
             logging.error(f"Lidar scanning error: {e}")
             self.handle_lidar_error()
 
+    def close(self):
+        if self.connected:
+            self.lidar.stop()
+            self.lidar.disconnect()
+            self.connected = False
+            logging.info("LIDAR disconnected safely.")
+
 
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
