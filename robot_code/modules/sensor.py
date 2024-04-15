@@ -35,8 +35,9 @@ class SensorFusion:
         fused_data = np.full(360, float('inf'))
         for angle in range(360):
             measurement = min(lidar_data.get(angle, float('inf')), ultrasonic_data.get(angle, float('inf')))
-            fused_data[angle] = self.kalman_filters[angle].update(measurement)
+            fused_data[int(angle)] = self.kalman_filters[int(angle)].update(measurement)
         return fused_data
+
 
 class LidarScanner:
     def __init__(self, port):
