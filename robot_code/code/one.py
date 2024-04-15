@@ -155,7 +155,7 @@ class RobotController:
                 else:
                     return None  # Path complete
             direction_angle = np.degrees(np.arctan2(next_position[1] - current_position[1], next_position[0] - current_position[0]))
-            return (direction_angle + 360) % 360
+            return int((direction_angle + 360) % 360)  # Ensure the result is integer
         return None
 
     def main_loop(self):

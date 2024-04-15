@@ -32,11 +32,19 @@ class SensorFusion:
         self.kalman_filters = [KalmanFilter() for _ in range(360)]
 
     def fuse_data(self, lidar_data, ultrasonic_data):
-        fused_data = np.full(360, float('inf'))
+        fused_data = np.full(360, np.inf)
         for angle in range(360):
-            measurement = min(lidar_data.get(angle, float('inf')), ultrasonic_data.get(angle, float('inf')))
-            fused_data[int(angle)] = self.kalman_filters[int(angle)].update(measurement)
+            if angle in lidar_data and angle in ultrasonic_data:
+                lidar_value = lidar_data[angle]
+                ultrasonic_value = ultrasonic_data[angle]
+                # Make sure only to process valid measurements
+                if lidar_value is not None and ultrasonic_value is not None:
+                    measurement = min(lidar_value, ultrasonic_value)
+                    # Update with a valid integer index
+                    index = int(angle)  # Ensure the index is integer
+                    fused_data[index] = self.kalman_filters[index].update(measurement)
         return fused_data
+
 
 
 class LidarScanner:
