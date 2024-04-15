@@ -159,6 +159,7 @@ class RobotController:
 
                 # Clean up sensor data to handle infinite values properly
                 valid_sensor_data = np.where(sensor_data == np.inf, 1000, sensor_data)  # Replace 'inf' with a large number, e.g., 1000 meters
+                print(valid_sensor_data) #Debug code
 
                 histogram = self.vfh.compute_histogram(valid_sensor_data)
                 if np.any(histogram > 0):
