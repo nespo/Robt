@@ -103,14 +103,14 @@ class RobotController:
         self.current_turn_rate = 0
         self.lidar_scanner = LidarScanner('/dev/ttyUSB0')
         self.steering_pid = PIDController(kp=0.1, ki=0.01, kd=0.05, setpoint=0)
-        self.speed_pid = PIDController(kp=0.2, ki=0.02, kd=0.1, setpoint=100)  # Setpoint is the desired speed
+        self.speed_pid = PIDController(kp=0.2, ki=0.02, kd=0.1, setpoint=100)
         self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
         self.vfh = VFHPlus(cell_size=5, threshold=250, sectors=180)
         self.dwa = DynamicWindowApproach(max_speed=100, max_turn_rate=45)
-        self.steering_threshold = 10  # Degrees within which the robot should move forward
-        self.max_turn_angle = 50     # Max degrees the robot should turn at once
+        self.steering_threshold = 10
+        self.max_turn_angle = 50
         self.current_loc = get_current_gps()
-        self.goal_loc = (62.878868, 27.637853)  # Update with actual target GPS
+        self.goal_loc = (62.878868, 27.637853)
         logging.info(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
@@ -176,7 +176,7 @@ class RobotController:
                     path_direction = self.calculate_path_direction()
                     if path_direction is not None:
                         self.move_robot(path_direction, self.speed_pid.setpoint)
-                time.sleep(1)  # Control loop pause
+                time.sleep(1)
                 self.update_path_if_needed()
         except (KeyboardInterrupt, Exception) as e:
             logging.error(f"An error occurred: {e}")
