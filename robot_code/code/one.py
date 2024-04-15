@@ -44,7 +44,7 @@ class VFHPlus:
             sector_index = int(angle // sector_angle)  # Explicit integer conversion
             if 0 <= sector_index < self.sectors:
                 histogram[sector_index] += 1
-            print(histogram)
+        print(histogram)
         return histogram
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
