@@ -67,7 +67,7 @@ class RobotController:
         self.max_turn_angle = 50     # Max degrees the robot should turn at once
 
         self.current_loc = get_current_gps()
-        self.goal_loc = (62.878825,27.637613)  # Update with actual target GPS
+        self.goal_loc = (62.878868,27.637853)  # Update with actual target GPS
         logging.info(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
 
