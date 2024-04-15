@@ -39,12 +39,13 @@ class VFHPlus:
         histogram = np.zeros(self.sectors)
         sector_angle = 360 // self.sectors
         for angle in range(360):
-            sector_index = angle // sector_angle
-            distance = sensor_data[angle]
+            sector_index = int(angle // sector_angle)  # Force integer index
+            distance = sensor_data.get(angle, float('inf'))  # Safely access data with default
             if distance < self.threshold:
                 histogram[sector_index] += 1
         logging.debug(f"Computed VFH+ histogram: {histogram}")
         return histogram
+
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
         safe_trajectories = []
