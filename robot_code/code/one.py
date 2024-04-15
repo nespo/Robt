@@ -32,7 +32,7 @@ class VFHPlus:
     def __init__(self, cell_size=10, threshold=300, sectors=180):
         self.cell_size = cell_size
         self.threshold = threshold
-        self.sectors = sectors  # Increased number of sectors for finer resolution
+        self.sectors = sectors
         logging.info("Initialized VFH+ with finer resolution.")
 
     def compute_histogram(self, sensor_data):
@@ -40,19 +40,16 @@ class VFHPlus:
         sector_angle = 360 // self.sectors
         for angle in range(360):
             if angle >= len(sensor_data):
-                logging.error(f"Angle {angle} exceeds sensor data length {len(sensor_data)}. Skipping.")
-                continue
-            sector_index = int(angle // sector_angle)
-            if sector_index >= len(histogram):
-                logging.error(f"Sector index {sector_index} out of bounds for histogram with length {len(histogram)}.")
+                logging.warning(f"Angle {angle} exceeds sensor data length.")
                 continue
             distance = sensor_data[angle]
+            sector_index = angle // sector_angle
+            if sector_index >= self.sectors:
+                logging.error(f"Sector index {sector_index} out of bounds for histogram with {self.sectors} sectors.")
+                continue
             if distance < self.threshold:
                 histogram[sector_index] += 1
-        logging.debug(f"Computed VFH+ histogram: {histogram}")
         return histogram
-
-
 
     def find_safe_trajectory(self, histogram, current_heading, velocities, goal_direction):
         safe_trajectories = []
@@ -61,10 +58,7 @@ class VFHPlus:
             if histogram[sector_index] == 0:  # No obstacles in the sector
                 cost = self.calculate_cost(angle, speed, goal_direction)
                 safe_trajectories.append((cost, speed, angle))
-        if not safe_trajectories:
-            return None
-        # Choose trajectory with the minimum cost
-        return min(safe_trajectories)[1:]
+        return min(safe_trajectories, default=(None, None))[1:]  # Safely return the trajectory with the least cost
 
     def calculate_cost(self, angle, speed, goal_direction):
         angle_cost = min((angle - goal_direction) % 360, (goal_direction - angle) % 360)

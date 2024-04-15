@@ -41,34 +41,40 @@ class SensorFusion:
 class LidarScanner:
     def __init__(self, port):
         self.lidar = RPLidar(port)
-        self.connected = False
+        self.connect()
+
+    def connect(self):
         try:
             self.lidar.connect()
-            self.connected = True
             logging.info("LIDAR connected.")
         except RPLidarException as e:
             logging.error(f"Failed to connect to LIDAR: {e}")
             raise SystemExit(e)
 
     def iter_scans(self):
-        if not self.connected:
-            logging.error("LIDAR not connected.")
-            return
+        while True:
+            try:
+                for scan in self.lidar.iter_scans():
+                    yield {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
+            except RPLidarException as e:
+                logging.error(f"Lidar scanning error: {e}")
+                self.handle_lidar_error()
+
+    def handle_lidar_error(self):
+        self.lidar.stop()
+        self.lidar.disconnect()
         try:
-            for scan in self.lidar.iter_scans():
-                scan_data = {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
-                yield scan_data
-        except RPLidarException as e:
-            logging.error(f"Lidar scanning error: {e}")
-            self.close()
+            time.sleep(5)  # Wait before attempting to reconnect
+            self.connect()  # Attempt to reconnect
+        except SystemExit:
+            logging.error("Reconnection failed. Exiting.")
             raise
 
     def close(self):
-        if self.connected:
-            self.lidar.stop()
-            self.lidar.disconnect()
-            self.connected = False
-            logging.info("LIDAR disconnected safely.")
+        self.lidar.stop()
+        self.lidar.disconnect()
+        logging.info("LIDAR disconnected safely.")
+
 
 class ObstacleChecker:
     def __init__(self, lidar, us, config):
