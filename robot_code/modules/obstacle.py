@@ -53,7 +53,6 @@ class ObstacleChecker:
         self.lidar = lidar
         self.us = us
         self.config = config
-        self.max_distance = self.config.get('max_distance', 2000)
         self.us_thread = None
         self.lidar_data = {}
         self.us_data = {}
