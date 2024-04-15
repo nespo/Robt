@@ -194,17 +194,40 @@ class RobotController:
         logging.info(f"Current GPS position: {current_position}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
         return goal_reached
 
-    def move_robot(self, direction, speed):
+    def move_robot(self, steering_direction):
+        if steering_direction is None:
+            logging.info("No valid steering direction provided. Robot will not move.")
+            return  # No valid direction to move
+
+        # Retrieve the current heading from the navigation module
         current_heading = get_current_heading()
-        error = (direction - current_heading + 180) % 360 - 180
-        turn_rate = self.steering_pid.compute(error)
-        adjusted_speed = self.speed_pid.compute(abs(error))
-        if abs(error) < self.steering_threshold:
-            self.robot.forward(adjusted_speed)
+        error = steering_direction - current_heading
+
+        # Normalize the error to be within the range [-180, 180]
+        if error > 180:
+            error -= 360
+        elif error < -180:
+            error += 360
+
+        logging.info(f"Steering direction: {steering_direction}, Current heading: {current_heading}, Heading error: {error}")
+
+        # Define threshold for action
+        steering_threshold = 10  # degrees within which the robot should move forward
+        max_turn_angle = 50  # max degrees the robot should turn at once
+
+        # Determine movement based on error magnitude and direction
+        if abs(error) < steering_threshold:
+            logging.info("Moving forward")
+            self.robot.forward(100)  # Move forward with power level 50
         elif error > 0:
-            self.robot.turn_right(turn_rate, adjusted_speed)
+            turn_angle = min(max_turn_angle, error)  # Limit the turn to max_turn_angle
+            logging.info(f"Turning right: {turn_angle} degrees")
+            self.robot.turn_right(70, 1 - turn_angle / 100)  # Reduce inside wheel speed based on turn angle
         else:
-            self.robot.turn_left(turn_rate, adjusted_speed)
+            turn_angle = min(max_turn_angle, -error)  # Limit the turn to max_turn_angle
+            logging.info(f"Turning left: {turn_angle} degrees")
+            self.robot.turn_left(70, 1 - turn_angle / 100)  # Reduce inside wheel speed based on turn angle
+
 
     def reverse_and_reroute(self):
         logging.info("Obstacle encountered, reversing and rerouting.")
