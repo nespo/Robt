@@ -101,7 +101,7 @@ class RobotController:
         self.lidar_scanner = LidarScanner('/dev/ttyUSB0')
         self.steering_pid = PIDController(kp=0.1, ki=0.01, kd=0.05, setpoint=0)
         self.speed_pid = PIDController(kp=0.2, ki=0.02, kd=0.1, setpoint=100)  # Setpoint is the desired speed
-        self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), config)
+        self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
         self.vfh = VFHPlus(cell_size=5, threshold=250, sectors=180)
         self.dwa = DynamicWindowApproach(max_speed=100, max_turn_rate=45)
         self.steering_threshold = 10  # Degrees within which the robot should move forward
