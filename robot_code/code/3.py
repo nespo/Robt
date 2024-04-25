@@ -14,7 +14,7 @@ from robot_code.code.motor_control import Robot
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 from robot_code.modules.sensor import LidarScanner, ObstacleChecker
-from robot_code.code.config import config
+from config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
 from robot_code.modules.a_star import a_star
 
