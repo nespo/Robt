@@ -105,31 +105,29 @@ class RobotController:
         self.current_loc = get_current_gps()
         self.goal_loc = (62.878815, 27.637536)
         print(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
-        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 100, 1000)
+        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc)
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
         self.planned_path = a_star(self.start_position, self.goal_position, self.grid) if self.start_position != self.goal_position else []
         self.current_path_index = 0
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
-    def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
-        # Calculate distance in meters for scale
+    def initialize_grid(self, current_loc, goal_loc):
         lat_diff = (current_loc[0] - goal_loc[0]) * 111000  # Conversion from lat to meters
         lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
         distance = np.sqrt(lat_diff**2 + lon_diff**2)
         
-        # Implement a limit to the grid size to prevent excessive memory usage
-        max_grid_size = 5000  # Set a practical upper limit for grid size
+        # Minimum number of cells apart for clear differentiation
+        min_cells_apart = 100
+        
+        # Use a higher base resolution to ensure greater granularity
+        base_resolution = 5000  # Setting a higher base resolution
+        scale = base_resolution / max(distance, 1)  # Ensuring distance is not zero
 
-        # Adjust scale and ensure the grid size does not exceed the maximum allowable size
-        if distance > 0:
-            scale = base_resolution / distance
-        else:
-            scale = float('inf')  # To handle cases where distance might be zero
-
-        grid_resolution = min(int(scale * expected_range_m), max_grid_size)
+        # Increase resolution based on min_cells_apart requirement
+        grid_resolution = max(int(scale * min_cells_apart), 5000)  # Adjusted grid resolution
         grid_shape = (grid_resolution, grid_resolution)
-        grid = np.zeros(grid_shape)
+        grid = np.zeros(grid_shape, dtype=np.float32)  # Using float32 to save memory
         origin = calculate_midpoint(current_loc, goal_loc)
         
         return origin, scale, grid
