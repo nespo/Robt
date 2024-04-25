@@ -113,21 +113,24 @@ class RobotController:
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
     def initialize_grid(self, current_loc, goal_loc):
-        max_grid_size = 5000  # Maximum grid size to avoid MemoryError
-        # Calculate distance in meters
-        lat_diff = (current_loc[0] - goal_loc[0]) * 111000  # Conversion from lat to meters
-        lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
-        distance = np.sqrt(lat_diff**2 + lon_diff**2)
+        # Calculate normalized distances
+        lat_diff = abs(current_loc[0] - goal_loc[0])
+        lon_diff = abs(current_loc[1] - goal_loc[1])
 
-        # Scale based on distance, with a maximum grid resolution
-        scale = max_grid_size / max(distance, 1)  # Prevent division by zero
-        grid_resolution = max_grid_size
+        # Distance in degrees treated as meters for close proximities
+        distance = np.sqrt(lat_diff**2 + lon_diff**2) * 111000  # converting degrees to meters approximately
 
-        # Define the grid shape within the maximum allowed size
+        # Adaptive scale based on distance
+        if distance < 10:  # If distance is less than 10 meters, increase the granularity
+            scale = 1000
+        else:
+            scale = 500 / distance
+
+        grid_resolution = max(int(scale * distance), 1000)  # Ensure a minimum grid size
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape, dtype=np.float32)
         origin = calculate_midpoint(current_loc, goal_loc)
-        
+
         return origin, scale, grid
 
     def gps_to_grid(self, latitude, longitude):
@@ -135,9 +138,8 @@ class RobotController:
         y = (latitude - self.origin[0]) * self.scale
         grid_x = int(x) + self.grid.shape[1] // 2
         grid_y = int(y) + self.grid.shape[0] // 2
-        grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
-        grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
         return (grid_y, grid_x)
+
     
     def calculate_path_direction(self):
         if self.planned_path and self.current_path_index < len(self.planned_path):
