@@ -108,7 +108,9 @@ class NavigationSystem:
             while next_position != tuple(self.current_position):
                 target_heading = np.degrees(np.arctan2(next_position[1] - self.current_position[1],
                                                       next_position[0] - self.current_position[0]))
+                print(target_heading)
                 required_turn = angular_difference(target_heading, self.current_heading)
+                print(required_turn)
                 if abs(required_turn) > 10:
                     if required_turn > 0:
                         self.robot.turn_right(abs(required_turn))
