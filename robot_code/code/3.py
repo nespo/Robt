@@ -101,5 +101,6 @@ class RobotController:
 
 if __name__ == "__main__":
     config = {'max_distance': 4000}  # Example configuration
+    print(config)
     robot_controller = RobotController(config)
     robot_controller.main_loop()
