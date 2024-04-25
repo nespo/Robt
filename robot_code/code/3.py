@@ -78,7 +78,7 @@ class NavigationSystem:
     def __init__(self, destination, config, grid_size=(500, 500), resolution=1):
         self.robot = Robot(config)
         self.lidar = LidarScanner('/dev/ttyUSB0')
-        self.obstacle_checker = ObstacleChecker(self.lidar_scanner, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
+        self.obstacle_checker = ObstacleChecker(self.lidar, Ultrasonic(Pin('D8'), Pin('D9')), {'max_distance': 4000})
         self.destination = destination
         self.grid = np.zeros(grid_size)
         self.planner = AStarPlanner(self.grid)
