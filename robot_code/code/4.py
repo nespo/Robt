@@ -29,7 +29,7 @@ class VFHPlus:
         self.cell_size = cell_size
         self.threshold = threshold
         self.sectors = sectors
-        print("Initialized VFH+ with finer resolution.")
+    print("Initialized VFH+ with finer resolution.")
 
     def compute_histogram(self, sensor_data):
         print("Inside histogram")
@@ -151,7 +151,7 @@ class RobotController:
 
     def main_loop(self):
         try:
-            while not self.reached_goal(): #Check if the robot reached the goal locaion. If not than proceed with the navigation
+            while not self.reached_goal():
                 current_heading = get_current_heading()
                 sensor_data = self.obstacle_checker.check_for_obstacles()
 
