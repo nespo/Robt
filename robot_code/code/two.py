@@ -135,15 +135,23 @@ class RobotController:
             time.sleep(1)
 
     def should_update_path(self, current_position):
-        if self.fused_sensor_data and np.any(self.fused_sensor_data < self.obstacle_checker.config['max_distance']):
-            return True
+    # Check if there's an obstacle closer than the max allowed distance
+        if self.fused_sensor_data is not None:
+            obstacle_close = np.any(self.fused_sensor_data < self.obstacle_checker.config['max_distance'])
+            if obstacle_close:
+                return True
+        
+        # Check if the robot has significantly deviated from the planned path
         if not self.planned_path:
             return False
-        closest_point_on_path = min(self.planned_path, key=lambda point: np.linalg.norm(np.array(point) - np.array(current_position)))
-        distance_to_path = np.linalg.norm(np.array(closest_point_on_path) - np.array(current_position))
-        if distance_to_path > 10:
+        # Computing the minimum distance to the path
+        path_distances = np.linalg.norm(np.array(self.planned_path) - np.array(current_position), axis=1)
+        closest_distance = np.min(path_distances)
+        if closest_distance > 10:  # Threshold to decide if we need to recalculate the path
             return True
+        
         return False
+
 
     def main_loop(self):
         try:
