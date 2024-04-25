@@ -114,9 +114,23 @@ class RobotController:
 
 
     def calculate_distance(self, loc1, loc2):
-        lat_diff = (loc1[0] - loc2[0]) * 111319.9  # convert degrees to meters
-        lon_diff = (loc1[1] - loc2[1]) * 111319.9  # convert degrees to meters
-        return np.sqrt(lat_diff**2 + lon_diff**2)
+        # Radius of the Earth in meters
+        R = 6371000  
+        # Convert latitude and longitude from degrees to radians
+        lat1, lon1 = np.radians(loc1[0]), np.radians(loc1[1])
+        lat2, lon2 = np.radians(loc2[0]), np.radians(loc2[1])
+
+        # Difference in coordinates
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        # Haversine formula
+        a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
+        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        distance = R * c
+
+        return distance
+
 
     def initialize_grid(self, current_loc, goal_loc):
         distance = self.calculate_distance(current_loc, goal_loc)
