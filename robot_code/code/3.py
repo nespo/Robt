@@ -7,7 +7,7 @@ import sys
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
-parent_dir = os.path.join(script_dir, '..', '..', 'modules')
+parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
 
 from robot_code.code.motor_control import Robot
