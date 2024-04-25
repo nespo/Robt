@@ -157,7 +157,7 @@ class RobotController:
         try:
             while not self.reached_goal():
                 current_heading = get_current_heading()
-                if self.fused_sensor_data:
+                if np.any(self.fused_sensor_data):  # Modified this line
                     with self.sensor_data_lock:
                         histogram = self.vfh.compute_histogram(self.fused_sensor_data)
                         steering_direction = self.vfh.find_safe_direction(histogram, current_heading)
@@ -172,6 +172,7 @@ class RobotController:
             self.path_thread.join()
             self.robot.stop()
             self.lidar_scanner.close()
+
 
     def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
         actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000
