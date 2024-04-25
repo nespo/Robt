@@ -133,7 +133,7 @@ class RobotController:
 
 
     def initialize_grid(self, current_loc, goal_loc):
-        distance = calculate_distance(current_loc, goal_loc)
+        distance = self.calculate_distance(current_loc, goal_loc)
         print(f"Distance: {distance}")  # Debug: Check calculated distance
         
         scale = 1000 / distance  # Scale such that 1 meter in real-world is represented by many cells
