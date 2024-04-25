@@ -112,26 +112,28 @@ class RobotController:
         self.current_path_index = 0
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
+
+    def calculate_distance(loc1, loc2):
+        lat_diff = (loc1[0] - loc2[0]) * 111319.9  # convert degrees to meters
+        lon_diff = (loc1[1] - loc2[1]) * 111319.9  # convert degrees to meters
+        return np.sqrt(lat_diff**2 + lon_diff**2)
+
     def initialize_grid(self, current_loc, goal_loc):
-        # Calculate the distance between points
-        lat_diff = (current_loc[0] - goal_loc[0]) * 111319.9  # convert degrees to meters
-        lon_diff = (current_loc[1] - goal_loc[1]) * 111319.9  # convert degrees to meters
-        distance = np.sqrt(lat_diff**2 + lon_diff**2)
-        print(f"Calculated distance: {distance}")
+        distance = self.calculate_distance(current_loc, goal_loc)
+        print(f"Distance: {distance}")
+        min_cells_apart = 20  # Minimum cells apart for close points
+        
+        # Adjust scale to ensure minimum separation on the grid
+        scale = 5000 / distance if distance < 5 else 500 / distance
+        grid_resolution = int(max(min_cells_apart, scale * distance))
 
-        # Define micro-grid scale if distance is too small
-        if distance < 1:  # distance less than 1 meter
-            scale = 5000  # Large scale to create differentiation in the grid
-        else:
-            scale = 500 / distance  # Normal scaling
-
-        max_grid_size = 1000  # Cap the grid size to prevent memory issues
-        grid_resolution = min(int(scale * distance), max_grid_size)
+        # Ensure grid resolution is sensible
+        grid_resolution = max(grid_resolution, 1000)  # Cap minimum grid size
+        grid_resolution = min(grid_resolution, 5000)  # Cap maximum grid size for memory management
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape, dtype=np.float32)
         origin = calculate_midpoint(current_loc, goal_loc)
-
-        print(f"Origin {origin}, Scale: {scale}, Grid: {grid}")
+        
         return origin, scale, grid
 
     def gps_to_grid(self, latitude, longitude):
