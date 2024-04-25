@@ -106,7 +106,7 @@ class RobotController:
         self.steering_threshold = 10
         self.max_turn_angle = 50
         self.current_loc = get_current_gps()
-        self.goal_loc = (62.8788937, 27.6376745)
+        self.goal_loc = (62.878815, 27.637536)
         logging.info(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
         self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
