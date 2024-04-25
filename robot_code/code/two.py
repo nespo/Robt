@@ -118,6 +118,7 @@ class RobotController:
         self.obstacle_thread.start()
         self.path_thread.start()
         self.steering_threshold = 10
+        self.max_turn_angle = 30
 
     def continual_obstacle_check(self):
         while self.keep_running:
