@@ -231,7 +231,7 @@ class RobotController:
 
     def reverse_and_reroute(self):
         logging.info("Obstacle encountered, reversing and rerouting.")
-        self.robot.reverse(50)
+        self.robot.backward(50)
         time.sleep(2)  # Reverse for 2 seconds
         self.update_path_if_needed()
 
