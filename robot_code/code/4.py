@@ -113,23 +113,29 @@ class RobotController:
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
     def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
-        actual_distance_m = np.linalg.norm(np.array(current_loc) - np.array(goal_loc)) * 111000
-        actual_distance_m = max(actual_distance_m, 0.1)
-        scale = base_resolution / actual_distance_m
+        # Calculating the actual physical distance between current and goal locations in meters
+        distance = np.linalg.norm(np.array([current_loc[0] - goal_loc[0], current_loc[1] - goal_loc[1]]) * np.array([111000, 111000]))  # Approx conversion of lat/lon to meters
+        distance = max(distance, 1)  # Avoid division by zero for very close points
+
+        # Adjust scale to ensure the grid covers at least the expected range in meters
+        scale = base_resolution / max(distance, expected_range_m)  # Use the larger of the actual distance or expected range to define scale
+
+        # Midpoint to center the grid
         origin = calculate_midpoint(current_loc, goal_loc)
-        grid_resolution = int(base_resolution * (expected_range_m / max(actual_distance_m, 10)))
+
+        # Set resolution to be high enough to cover the expected range with enough detail
+        grid_resolution = int(base_resolution * (expected_range_m / max(distance, 1)))  # Prevent division by zero
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
-        print(f"Grid initialized with origin {origin}, scale {scale}, resolution {grid_resolution}")
+
         return origin, scale, grid
 
-
     def gps_to_grid(self, latitude, longitude):
+        # Mapping GPS coordinates to grid coordinates, adjusting to center on the grid
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x))
-        grid_y = int(round(y))
-        # Handle out-of-bound grid positions
+        grid_x = int(round(x)) + self.grid.shape[1] // 2  # Centering
+        grid_y = int(round(y)) + self.grid.shape[0] // 2  # Centering
         grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
         grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
         return (grid_y, grid_x)
