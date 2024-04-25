@@ -133,18 +133,14 @@ class RobotController:
 
 
     def initialize_grid(self, current_loc, goal_loc):
-        distance = self.calculate_distance(current_loc, goal_loc)
-        print(f"Distance: {distance}")
-        min_cells_apart = 20  # Minimum cells apart for close points
+        distance = calculate_distance(current_loc, goal_loc)
+        print(f"Distance: {distance}")  # Debug: Check calculated distance
         
-        # Adjust scale to ensure minimum separation on the grid
-        scale = 5000 / distance if distance < 5 else 500 / distance
-        grid_resolution = int(max(min_cells_apart, scale * distance))
-
-        # Ensure grid resolution is sensible
-        grid_resolution = max(grid_resolution, 1000)  # Cap minimum grid size
-        grid_resolution = min(grid_resolution, 5000)  # Cap maximum grid size for memory management
-        grid_shape = (grid_resolution, grid_resolution)
+        scale = 1000 / distance  # Scale such that 1 meter in real-world is represented by many cells
+        grid_resolution = int(scale * distance)  # This should equal 1000 if scaling is correct
+        print(f"Scale: {scale}, Grid Resolution: {grid_resolution}")  # Debug: Log scale and grid size
+        
+        grid_shape = (max(1000, grid_resolution), max(1000, grid_resolution))  # Ensure a minimum grid size
         grid = np.zeros(grid_shape, dtype=np.float32)
         origin = calculate_midpoint(current_loc, goal_loc)
         
@@ -153,8 +149,9 @@ class RobotController:
     def gps_to_grid(self, latitude, longitude):
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(x) + self.grid.shape[1] // 2
-        grid_y = int(y) + self.grid.shape[0] // 2
+        grid_x = int(x + self.grid.shape[1] / 2)  # Adjust to grid center
+        grid_y = int(y + self.grid.shape[0] / 2)
+        print(f"Grid Position: ({grid_y}, {grid_x})")  # Debug: Log grid positions
         return (grid_y, grid_x)
     
     def calculate_path_direction(self):
