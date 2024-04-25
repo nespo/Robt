@@ -105,7 +105,7 @@ class RobotController:
         self.current_loc = get_current_gps()
         self.goal_loc = (62.878815, 27.637536)
         print(f"Current GPS: {self.current_loc}, Goal GPS: {self.goal_loc}")
-        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 10, 10000)
+        self.origin, self.scale, self.grid = self.initialize_grid(self.current_loc, self.goal_loc, 100, 1000)
         self.start_position = self.gps_to_grid(self.current_loc[0], self.current_loc[1])
         self.goal_position = self.gps_to_grid(self.goal_loc[0], self.goal_loc[1])
         self.planned_path = a_star(self.start_position, self.goal_position, self.grid) if self.start_position != self.goal_position else []
@@ -113,29 +113,25 @@ class RobotController:
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
     def initialize_grid(self, current_loc, goal_loc, expected_range_m, base_resolution):
-        # Calculating the actual physical distance between current and goal locations in meters
-        distance = np.linalg.norm(np.array([current_loc[0] - goal_loc[0], current_loc[1] - goal_loc[1]]) * np.array([111000, 111000]))  # Approx conversion of lat/lon to meters
-        distance = max(distance, 1)  # Avoid division by zero for very close points
-
-        # Adjust scale to ensure the grid covers at least the expected range in meters
-        scale = base_resolution / max(distance, expected_range_m)  # Use the larger of the actual distance or expected range to define scale
-
-        # Midpoint to center the grid
-        origin = calculate_midpoint(current_loc, goal_loc)
-
-        # Set resolution to be high enough to cover the expected range with enough detail
-        grid_resolution = int(base_resolution * (expected_range_m / max(distance, 1)))  # Prevent division by zero
+        # Calculate distance in meters for scale
+        lat_diff = (current_loc[0] - goal_loc[0]) * 111000  # Conversion from lat to meters
+        lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
+        distance = np.sqrt(lat_diff**2 + lon_diff**2)
+        scale = base_resolution / max(distance, expected_range_m)
+        
+        # Calculate grid resolution and dimensions
+        grid_resolution = int(scale * expected_range_m)  # Adjust grid resolution based on scale and range
         grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
-
+        origin = calculate_midpoint(current_loc, goal_loc)
+        
         return origin, scale, grid
 
     def gps_to_grid(self, latitude, longitude):
-        # Mapping GPS coordinates to grid coordinates, adjusting to center on the grid
         x = (longitude - self.origin[1]) * self.scale
         y = (latitude - self.origin[0]) * self.scale
-        grid_x = int(round(x)) + self.grid.shape[1] // 2  # Centering
-        grid_y = int(round(y)) + self.grid.shape[0] // 2  # Centering
+        grid_x = int(x) + self.grid.shape[1] // 2
+        grid_y = int(y) + self.grid.shape[0] // 2
         grid_x = max(0, min(self.grid.shape[1] - 1, grid_x))
         grid_y = max(0, min(self.grid.shape[0] - 1, grid_y))
         return (grid_y, grid_x)
