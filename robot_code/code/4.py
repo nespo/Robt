@@ -113,21 +113,19 @@ class RobotController:
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
     def initialize_grid(self, current_loc, goal_loc):
+        max_grid_size = 5000  # Maximum grid size to avoid MemoryError
+        # Calculate distance in meters
         lat_diff = (current_loc[0] - goal_loc[0]) * 111000  # Conversion from lat to meters
         lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
         distance = np.sqrt(lat_diff**2 + lon_diff**2)
-        
-        # Minimum number of cells apart for clear differentiation
-        min_cells_apart = 100
-        
-        # Use a higher base resolution to ensure greater granularity
-        base_resolution = 5000  # Setting a higher base resolution
-        scale = base_resolution / max(distance, 1)  # Ensuring distance is not zero
 
-        # Increase resolution based on min_cells_apart requirement
-        grid_resolution = max(int(scale * min_cells_apart), 5000)  # Adjusted grid resolution
+        # Scale based on distance, with a maximum grid resolution
+        scale = max_grid_size / max(distance, 1)  # Prevent division by zero
+        grid_resolution = max_grid_size
+
+        # Define the grid shape within the maximum allowed size
         grid_shape = (grid_resolution, grid_resolution)
-        grid = np.zeros(grid_shape, dtype=np.float32)  # Using float32 to save memory
+        grid = np.zeros(grid_shape, dtype=np.float32)
         origin = calculate_midpoint(current_loc, goal_loc)
         
         return origin, scale, grid
