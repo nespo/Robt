@@ -117,6 +117,7 @@ class RobotController:
         self.path_thread = threading.Thread(target=self.continual_path_update)
         self.obstacle_thread.start()
         self.path_thread.start()
+        self.steering_threshold = 10
 
     def continual_obstacle_check(self):
         while self.keep_running:
