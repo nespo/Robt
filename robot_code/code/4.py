@@ -118,15 +118,17 @@ class RobotController:
         lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
         distance = np.sqrt(lat_diff**2 + lon_diff**2)
         
-        # Increase resolution based on proximity, aiming for at least 10 cells between any two points
-        min_cells_apart = 10
-        grid_resolution = base_resolution * min_cells_apart
+        # Implement a limit to the grid size to prevent excessive memory usage
+        max_grid_size = 5000  # Set a practical upper limit for grid size
 
-        scale = grid_resolution / distance if distance != 0 else float('inf')  # Prevent division by zero
-        
-        # Calculate grid size to ensure it encompasses a larger area
-        grid_size = max(int(scale * expected_range_m), 1000)  # Ensure at least a 1000x1000 grid
-        grid_shape = (grid_size, grid_size)
+        # Adjust scale and ensure the grid size does not exceed the maximum allowable size
+        if distance > 0:
+            scale = base_resolution / distance
+        else:
+            scale = float('inf')  # To handle cases where distance might be zero
+
+        grid_resolution = min(int(scale * expected_range_m), max_grid_size)
+        grid_shape = (grid_resolution, grid_resolution)
         grid = np.zeros(grid_shape)
         origin = calculate_midpoint(current_loc, goal_loc)
         
