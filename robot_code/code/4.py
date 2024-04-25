@@ -117,11 +117,16 @@ class RobotController:
         lat_diff = (current_loc[0] - goal_loc[0]) * 111000  # Conversion from lat to meters
         lon_diff = (current_loc[1] - goal_loc[1]) * 111000  # Conversion from lon to meters
         distance = np.sqrt(lat_diff**2 + lon_diff**2)
-        scale = base_resolution / max(distance, expected_range_m)
         
-        # Calculate grid resolution and dimensions
-        grid_resolution = int(scale * expected_range_m)  # Adjust grid resolution based on scale and range
-        grid_shape = (grid_resolution, grid_resolution)
+        # Increase resolution based on proximity, aiming for at least 10 cells between any two points
+        min_cells_apart = 10
+        grid_resolution = base_resolution * min_cells_apart
+
+        scale = grid_resolution / distance if distance != 0 else float('inf')  # Prevent division by zero
+        
+        # Calculate grid size to ensure it encompasses a larger area
+        grid_size = max(int(scale * expected_range_m), 1000)  # Ensure at least a 1000x1000 grid
+        grid_shape = (grid_size, grid_size)
         grid = np.zeros(grid_shape)
         origin = calculate_midpoint(current_loc, goal_loc)
         
