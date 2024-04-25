@@ -8,4 +8,5 @@ config = {
         "right_rear": {"pin_pwm": "P9", "pin_dir": "D15", "reverse": False}
     },
     "ultrasonic_servo_offset": 0,
+    'max_distance': 4000,
 }

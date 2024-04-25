@@ -100,7 +100,7 @@ class RobotController:
         return np.any([np.linalg.norm(np.array(current_position) - np.array(point)) > 1 for point in self.current_path])  # 1m threshold
 
 if __name__ == "__main__":
-    config = {'max_distance': 4000}  # Example configuration
+    #config = {'max_distance': 4000}  # Example configuration
     print(config)
     robot_controller = RobotController(config)
     robot_controller.main_loop()
