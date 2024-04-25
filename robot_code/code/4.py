@@ -113,7 +113,7 @@ class RobotController:
         print(f"Start position on grid: {self.start_position}, Goal position on grid: {self.goal_position}")
 
 
-    def calculate_distance(loc1, loc2):
+    def calculate_distance(self, loc1, loc2):
         lat_diff = (loc1[0] - loc2[0]) * 111319.9  # convert degrees to meters
         lon_diff = (loc1[1] - loc2[1]) * 111319.9  # convert degrees to meters
         return np.sqrt(lat_diff**2 + lon_diff**2)
