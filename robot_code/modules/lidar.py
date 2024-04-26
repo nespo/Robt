@@ -63,6 +63,6 @@ class ObstacleChecker:
 
     def check_for_obstacles(self):
         self.get_lidar_data()  # Refresh lidar data
-        sensor_data = {angle: distance for angle, distance in enumerate(sensor_data)}
+        sensor_data = {angle: distance for angle, distance in enumerate(self.lidar_data)}
         print("sensor DATA: ", sensor_data)
         return sensor_data
