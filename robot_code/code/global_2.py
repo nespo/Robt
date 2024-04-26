@@ -3,6 +3,7 @@ import heapq
 import utm
 import os
 import sys
+import time
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -57,6 +58,8 @@ class NavigationSystem:
             if 0 <= grid_x < self.grid_size and 0 <= grid_y < self.grid_size:
                 self.grid[grid_x, grid_y] = 1
                 print("Obstacle updated at grid position:", (grid_x, grid_y))
+                return True
+        return False
 
     def plan_path(self, start_lat, start_lon, goal_lat, goal_lon):
         print("Planning path from start to goal.")
@@ -139,6 +142,18 @@ class VFHPlus:
         print("Best direction found:", best_angle)
         return best_angle
 
+def wait_until_turn_complete(target_heading, tolerance=5):
+    """
+    Blocks execution until the robot's heading is within a certain tolerance of the target heading.
+    `tolerance` is the acceptable error in degrees.
+    """
+    current_heading = get_current_heading()
+    while abs(current_heading - target_heading) > tolerance:
+        time.sleep(0.1)  # Check every 100 milliseconds
+        current_heading = get_current_heading()
+        print(f"Current heading: {current_heading}, Target: {target_heading}")
+    print("Turn complete. Current heading:", current_heading)
+
 # Main loop for dynamic navigation
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
     print("Dynamic navigation started.")
@@ -162,24 +177,34 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
 
     for step in global_path:
         sensor_data = ultrasonic_data()
-        nav_system.update_obstacles(sensor_data)
+        if nav_system.update_obstacles(sensor_data):
+            print("Obstacle detected, recalculating path...")
+            dynamic_navigation(nav_system, *nav_system.gps_to_utm(*step), *goal_utm)
+            break
+
         histogram = vfh.update_histogram(sensor_data)
         direction = vfh.find_best_direction(histogram)
         if direction is not None:
             required_turn = direction - current_heading
-            print(f"Required turn: {required_turn}")
+            target_heading = (current_heading + required_turn) % 360  # Ensure the heading wraps around correctly
+            print(f"Required turn: {required_turn}, Target heading: {target_heading}")
+
             if required_turn < 0:
-                # Normalize turning power to range 0-100
                 turn_power = max(0, min(100, abs(required_turn)))
                 robot.turn_left(turn_power)
             elif required_turn > 0:
                 turn_power = max(0, min(100, abs(required_turn)))
                 robot.turn_right(turn_power)
-            # Move forward with normalized power
-            robot.forward(min(100, 50))  # Example forward power
+
+            # Wait for the turn to complete
+            wait_until_turn_complete(target_heading)
+
+            # Move forward after the turn is complete
+            robot.forward(min(50, 100))  # Example forward power
         else:
-            print("Obstacle detected, recalculating path...")
+            print("No navigable direction found, recalculating path...")
             dynamic_navigation(nav_system, *nav_system.gps_to_utm(*step), *goal_utm)
+            break
 
 
 nav_system = NavigationSystem()
