@@ -1,5 +1,6 @@
 import time
 import math
+import threading
 
 import os, sys
 # Adjust the sys.path to include the parent directory of robot_code
@@ -102,13 +103,11 @@ def navigate_obstacles(robot, us):
         return True
     # No need to stop the robot here if we want continuous movement in auto mode
 
-def navigate_to_goal(start_gps, goal_gps, robot):
-    """Navigate from start to goal, dynamically adjusting the path."""
+def navigate_to_goal(robot, start_gps, goal_gps):
     current_position = start_gps
-
     while True:
         distance = haversine(current_position, goal_gps)
-        if distance < 10:  # If within 10 cm of the goal, consider it reached
+        if distance < 10:
             print("Arrived at the destination")
             robot.stop()
             break
@@ -116,47 +115,54 @@ def navigate_to_goal(start_gps, goal_gps, robot):
         bearing = calculate_bearing(current_position, goal_gps)
         current_yaw = get_current_heading()
 
-        turn_needed = bearing - current_yaw
+        turn_needed = (bearing - current_yaw + 360) % 360
+        if turn_needed > 180:
+            turn_needed -= 360
 
         print(f"Distance: {distance} cm, Bearing: {bearing} degrees, Turn_needed: {turn_needed}")
+        adjust_heading(robot, turn_needed)
 
-        # Adjust the robot's bearing to match the goal bearing
-        if turn_needed > 0:
-            robot.turn_right(abs(turn_needed))
-            time.sleep(1)
-            obstacle = navigate_obstacles(robot, us)
-            if obstacle:
-                continue
-            else:
-                robot.backward(50)
-        else:
-            robot.turn_left(abs(turn_needed))
-            time.sleep(1)
-            obstacle = navigate_obstacles(robot, us)
-            if obstacle:
-                continue
-            else:
-                robot.backward(50)
-        
-        # Move forward in small increments to continuously adjust the path
-        obstacle = navigate_obstacles(robot, us)
-        if obstacle:
-            robot.forward(50)  # Adjust power as necessary for real robot speed
-            time.sleep(1)
-        else:
-            robot.backward(50)
-
-        # Assuming a delay to allow for movement before the next GPS read
-        # Update current_position with the new GPS coordinates
         current_position = get_current_gps()
 
-        print(f"Moving to position: {current_position}, Distance left: {distance} cm, Bearing needed: {bearing} degrees")
+def adjust_heading(robot, turn_needed):
+    if turn_needed > 5:
+        robot.turn_right(min(abs(turn_needed), 30))
+    elif turn_needed < -5:
+        robot.turn_left(min(abs(turn_needed), 30))
+    time.sleep(0.5)
 
+def obstacle_avoidance(robot, us):
+    while True:
+        scan_results = [us.get_status_at(angle) for angle in range(-90, 91, 18)]
+        if any(status == 0 for status in scan_results):
+            robot.stop()
+            handle_obstacles(robot, scan_results)
 
-# Example usage:
-if __name__ == "__main__":
+def handle_obstacles(robot, scan_results):
+    obstacle_index = scan_results.index(0)
+    if obstacle_index < len(scan_results) / 2:
+        robot.turn_right(90)
+    else:
+        robot.turn_left(90)
+    robot.forward(100)
+    time.sleep(1)
+
+def main():
     robot = Robot(config)
     us = Ultrasonic(Pin('D8'), Pin('D9'))
-    current_lat, current_lon = get_current_gps()  # Make sure this function returns the latest valid GPS coordinates
+    current_lat, current_lon = get_current_gps()
     start_gps = (current_lat, current_lon)
-    navigate_to_goal(start_gps, goal_gps, robot)
+    goal_gps = (62.878815, 27.637536)
+
+    # Start threads
+    navigation_thread = threading.Thread(target=navigate_to_goal, args=(robot, start_gps, goal_gps))
+    obstacle_thread = threading.Thread(target=obstacle_avoidance, args=(robot, us))
+
+    navigation_thread.start()
+    obstacle_thread.start()
+
+    navigation_thread.join()
+    obstacle_thread.join()
+
+if __name__ == "__main__":
+    main()
