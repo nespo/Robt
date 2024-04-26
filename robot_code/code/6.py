@@ -95,8 +95,9 @@ def navigate_to_goal(start_gps, goal_gps, robot):
         bearing = calculate_bearing(current_position, goal_gps)
         current_yaw = get_current_heading()
 
-        print(f"Distance: {distance} cm, Bearing: {bearing} degrees")
         turn_needed = bearing - current_yaw
+
+        print(f"Distance: {distance} cm, Bearing: {bearing} degrees, Turn_needed: {turn_needed}")
 
         # Adjust the robot's bearing to match the goal bearing
         if turn_needed > 0:
