@@ -27,6 +27,7 @@ class LidarScanner:
             return
         try:
             for scan in self.lidar.iter_scans():
+                logging.debug(f"Raw Scan Data: {scan}")
                 yield {round(measurement[1]): measurement[2] for measurement in scan if measurement[0] > 0}
         except RPLidarException as e:
             logging.error(f"Lidar scanning error: {e}")
@@ -52,7 +53,7 @@ class ObstacleChecker:
             return
         try:
             self.lidar_data = next(self.lidar.iter_scans(), {})
-            logging.debug(f"Lidar Data: {self.lidar_data}")
+            logging.debug(f"Lidar Data (after processing): {self.lidar_data}")
         except StopIteration:
             logging.error("No more LIDAR scans available.")
             self.lidar_data = {}
@@ -64,5 +65,18 @@ class ObstacleChecker:
     def check_for_obstacles(self):
         self.get_lidar_data()  # Refresh lidar data
         sensor_data = {angle: distance for angle, distance in enumerate(self.lidar_data)}
-        print("sensor DATA: ", sensor_data)
+        #print("sensor DATA: ", sensor_data)
         return sensor_data
+
+
+
+lidar_scanner = LidarScanner('/dev/ttyUSB0')
+obstacle_checker = ObstacleChecker(lidar_scanner)
+
+sensor_data = obstacle_checker.check_for_obstacles()
+
+    # Ensure all sensor data are finite and replace 'inf' and NaN with a high but finite value
+    #valid_sensor_data = np.where(np.isfinite(sensor_data), sensor_data, 1000)
+    #print("Valid Sensor Data:", valid_sensor_data)  # Debug print
+
+print(sensor_data)
