@@ -4,29 +4,6 @@ from rplidar import RPLidar, RPLidarException
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class KalmanFilter:
-    def __init__(self):
-        self.estimated_distance = 0
-        self.error_estimate = 1
-        self.error_measure = 1
-
-    def update(self, measurement):
-        kalman_gain = self.error_estimate / (self.error_estimate + self.error_measure)
-        self.estimated_distance = self.estimated_distance + kalman_gain * (measurement - self.estimated_distance)
-        self.error_estimate = (1 - kalman_gain) * self.error_estimate
-        return self.estimated_distance
-
-class SensorFusion:
-    def __init__(self):
-        self.kalman_filters = [KalmanFilter() for _ in range(360)]
-
-    def fuse_lidar_data(self, lidar_data):
-        fused_data = np.full(360, np.inf)  # Initialize with 'inf'
-        for angle in range(360):
-            lidar_value = lidar_data.get(angle, np.inf)
-            if lidar_value < np.inf:
-                fused_data[angle] = self.kalman_filters[angle].update(lidar_value)
-        return fused_data
 
 class LidarScanner:
     def __init__(self, port):
@@ -67,7 +44,6 @@ class ObstacleChecker:
     def __init__(self, lidar):
         self.lidar = lidar
         self.lidar_data = {}
-        self.sensor_fusion = SensorFusion()
 
     def get_lidar_data(self):
         if not self.lidar.connected:
@@ -84,13 +60,9 @@ class ObstacleChecker:
             logging.error(f"Error obtaining LIDAR data: {e}")
             self.lidar_data = {}
 
-    def merge_sensor_data(self):
-        fused_data = self.sensor_fusion.fuse_lidar_data(self.lidar_data)
-        print(fused_data)
-        return fused_data
 
     def check_for_obstacles(self):
         self.get_lidar_data()  # Refresh lidar data
-        fused_data = self.sensor_fusion.fuse_lidar_data(self.lidar_data)
-        print("FUSED DATA: ", fused_data)
-        return fused_data
+        sensor_data = {angle: distance for angle, distance in enumerate(sensor_data)}
+        print("sensor DATA: ", sensor_data)
+        return sensor_data

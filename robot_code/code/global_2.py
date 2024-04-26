@@ -113,10 +113,10 @@ def rplidar_data():
     sensor_data = obstacle_checker.check_for_obstacles()
 
     # Ensure all sensor data are finite and replace 'inf' and NaN with a high but finite value
-    valid_sensor_data = np.where(np.isfinite(sensor_data), sensor_data, 1000)
-    print("Valid Sensor Data:", valid_sensor_data)  # Debug print
+    #valid_sensor_data = np.where(np.isfinite(sensor_data), sensor_data, 1000)
+    #print("Valid Sensor Data:", valid_sensor_data)  # Debug print
 
-    return valid_sensor_data
+    return sensor_data
 
 # VFH+ algorithm class
 class VFHPlus:
