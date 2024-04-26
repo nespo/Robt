@@ -26,24 +26,57 @@ def haversine(coord1, coord2):
     """Calculate the great-circle distance between two points on the Earth."""
     lat1, lon1 = coord1
     lat2, lon2 = coord2
-    radius = 6371000  # Earth radius in meters
 
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    # Convert decimal degrees to radians
+    lat1 = math.radians(lat1)
+    lon1 = math.radians(lon1)
+    lat2 = math.radians(lat2)
+    lon2 = math.radians(lon2)
+
+    # Earth radius in kilometers
+    R = 6371
+
+    # Calculate the difference in latitude and longitude
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    # Haversine formula
+    a = math.sin(dlat / 2) * math.sin(dlat / 2) + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) * math.sin(dlon / 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-    return (radius * c) / 100
+    # Distance in kilometers
+    distance = R * c
 
-def calculate_bearing(pointA, pointB):
-    """Calculate the bearing between two points."""
-    lat1, lon1 = map(math.radians, pointA)
-    lat2, lon2 = map(math.radians, pointB)
-    dlon = lon2 - lon1
-    x = math.sin(dlon) * math.cos(lat2)
-    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-    bearing = math.atan2(x, y)
-    return (math.degrees(bearing) + 360) % 360
+    return distance * 100000
+
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    """
+    This function calculates the initial bearing angle between two points on Earth in degrees.
+
+    Args:
+        lat1 (float): Latitude of the first point in degrees.
+        lon1 (float): Longitude of the first point in degrees.
+        lat2 (float): Latitude of the second point in degrees.
+        lon2 (float): Longitude of the second point in degrees.
+
+    Returns:
+        float: The initial bearing angle in degrees from the first point to the second point.
+    """
+    # Convert decimal degrees to radians
+    lat1 = math.radians(lat1)
+    lon1 = math.radians(lon1)
+    lat2 = math.radians(lat2)
+    lon2 = math.radians(lon2)
+
+    y = math.cos(lat2) * math.sin(lon2 - lon1)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1)
+    bearing = math.atan2(y, x)
+
+    # Convert radians to degrees and adjust for quadrant
+    bearing = math.degrees(bearing)
+    bearing = (bearing + 360) % 360
+
+    return bearing
 
 def navigate_to_goal(start_gps, goal_gps, robot):
     """Navigate from start to goal using simple straight-line approximation."""
