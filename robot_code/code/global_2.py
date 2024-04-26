@@ -156,26 +156,31 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
 
     vfh = VFHPlus(robot_size=20, sector_angle=15, threshold=0.3)
     
+    # Adjust the robot's heading based on the best navigable direction found
     current_heading = get_current_heading()
     print("Current heading:", current_heading)
-    
+
     for step in global_path:
-        #sensor_data = rplidar_data()
         sensor_data = ultrasonic_data()
         nav_system.update_obstacles(sensor_data)
         histogram = vfh.update_histogram(sensor_data)
         direction = vfh.find_best_direction(histogram)
         if direction is not None:
             required_turn = direction - current_heading
-            print(f"reuired turn: {required_turn}")
+            print(f"Required turn: {required_turn}")
             if required_turn < 0:
-                robot.turn_left(abs(required_turn))
+                # Normalize turning power to range 0-100
+                turn_power = max(0, min(100, abs(required_turn)))
+                robot.turn_left(turn_power)
             elif required_turn > 0:
-                robot.turn_right(abs(required_turn))
-            robot.forward(50)
+                turn_power = max(0, min(100, abs(required_turn)))
+                robot.turn_right(turn_power)
+            # Move forward with normalized power
+            robot.forward(min(100, 50))  # Example forward power
         else:
             print("Obstacle detected, recalculating path...")
             dynamic_navigation(nav_system, *nav_system.gps_to_utm(*step), *goal_utm)
+
 
 nav_system = NavigationSystem()
 start_lat, start_lon = get_current_gps()
