@@ -1,114 +1,95 @@
-import threading
-import math
 import time
+import math
 
-import os
-import sys
-
-# Correct library import paths
-script_dir = os.path.dirname(os.path.realpath(__file__))
+import os, sys
+# Adjust the sys.path to include the parent directory of robot_code
+script_dir = os.path.dirname(__file__)
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
-from robot_code.modules.nav import get_current_gps, get_current_heading
-from robot_code.modules.motor import Motor
+
+from config import config
 from robot_code.modules.speed import Speed
-import RPi.GPIO as GPIO
+from robot_code.modules.servo import Servo
+from robot_code.modules.pwm import PWM
+from robot_code.modules.pin import Pin
+from robot_code.modules.ultrasonic import Ultrasonic
+from robot_code.modules.nav import get_current_gps, get_current_heading
 
-# Constants similar to C++ #define statements
-GPS_UPDATE_INTERVAL = 5000  # Time interval for GPS update in milliseconds
-MOTOR_A_OFFSET = 10
-MOTOR_B_OFFSET = 10
-DEG_TO_RAD = 0.017453292519943295
-RAD_TO_DEG = 57.29577951308232
-RC_NEUTRAL = 1500
-RC_MAX = 2000
-RC_MIN = 1000
+# Initialization
+speed_controller = Speed()
+ultrasonic_sensor = Ultrasonic(Pin('D8'))
+target_waypoints = [(62.878817, 27.637539), (62.878815, 27.637536)]  # List of waypoints (lat, lon)
+current_waypoint_index = 0
+turn_power_reduction = 0.7
 
-class Robot:
-    def __init__(self, config):
-        GPIO.setmode(GPIO.BCM)
-        self.motors = {
-            "left_front": Motor(config["motors"]["left_front"]["pin_pwm"],
-                                config["motors"]["left_front"]["pin_dir"],
-                                config["motors"]["left_front"]["reverse"]),
-            "right_front": Motor(config["motors"]["right_front"]["pin_pwm"],
-                                 config["motors"]["right_front"]["pin_dir"],
-                                 config["motors"]["right_front"]["reverse"]),
-            "left_rear": Motor(config["motors"]["left_rear"]["pin_pwm"],
-                               config["motors"]["left_rear"]["pin_dir"],
-                               config["motors"]["left_rear"]["reverse"]),
-            "right_rear": Motor(config["motors"]["right_rear"]["pin_pwm"],
-                                config["motors"]["right_rear"]["pin_dir"],
-                                config["motors"]["right_rear"]["reverse"]),
-        }
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    # This function calculates the bearing between two GPS coordinates
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_lon = math.radians(lon2 - lon1)
+    x = math.sin(delta_lon) * math.cos(phi2)
+    y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(delta_lon)
+    bearing = math.atan2(x, y)
+    return math.degrees(bearing) % 360
 
-    def drive_to(self, destination, timeout):
-        start_time = time.time()
-        while True:
-            current_loc = get_current_gps()
-            current_heading = get_current_heading()
-            distance = self.geo_distance(current_loc, destination)
-            bearing = self.geo_bearing(current_loc, destination)
-            required_heading = (bearing - current_heading) % 360
+def haversine_distance(lat1, lon1, lat2, lon2):
+    # This function calculates the distance between two GPS coordinates
+    R = 6371000  # Radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
-            self.drive(distance, required_heading)
+def navigate_to_waypoint(current_lat, current_lon, target_lat, target_lon):
+    target_bearing = calculate_bearing(current_lat, current_lon, target_lat, target_lon)
+    distance = haversine_distance(current_lat, current_lon, target_lat, target_lon)
+    current_yaw = get_current_heading()
+    angle_diff = (target_bearing - current_yaw + 360) % 360
+    
+    # Determine turn direction and magnitude
+    if angle_diff > 180:
+        speed_controller.turn_left(100 * turn_power_reduction)  # Adjust as necessary
+    else:
+        speed_controller.turn_right(100 * turn_power_reduction)
+    
+    # Move forward based on distance to the next waypoint
+    if distance > 10:
+        speed_controller.set_speed(80)  # Moderate speed
+    else:
+        speed_controller.set_speed(int(distance * 8))  # Slow down as it gets closer
 
-            if distance <= 1 or (time.time() - start_time) > timeout:
-                self.stop()
-                break
+def main_control_loop():
+    global current_waypoint_index
+    try:
+        while current_waypoint_index < len(target_waypoints):
+            current_lat, current_lon = get_current_gps  # Fetch current GPS coordinates
+            target_lat, target_lon = target_waypoints[current_waypoint_index]
+            
+            # Check if current waypoint is reached
+            if haversine_distance(current_lat, current_lon, target_lat, target_lon) < 5:
+                print("Waypoint reached: ", target_lat, target_lon)
+                current_waypoint_index += 1  # Move to next waypoint
+                if current_waypoint_index >= len(target_waypoints):
+                    print("All waypoints reached.")
+                    break
+                continue
+            
+            navigate_to_waypoint(current_lat, current_lon, target_lat, target_lon)
+            time.sleep(1)
 
-    def geo_distance(self, loc1, loc2):
-        lat1, lon1 = loc1
-        lat2, lon2 = loc2
-        R = 6371000
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        delta_phi = math.radians(lat2 - lat1)
-        delta_lambda = math.radians(lon2 - lon1)
-        a = math.sin(delta_phi / 2.0)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
+            # Check for obstacles
+            distance = ultrasonic_sensor.get_distance()
+            if distance < 30:  # distance in cm
+                speed_controller.set_speed(0)  # Stop if an obstacle is too close
+                print("Obstacle detected! Stopping.")
+                time.sleep(2)  # Wait for a bit before trying again
 
-    def geo_bearing(self, loc1, loc2):
-        lat1, lon1 = loc1
-        lat2, lon2 = loc2
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        delta_lambda = math.radians(lon2 - lon1)
-        x = math.sin(delta_lambda) * math.cos(phi2)
-        y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(delta_lambda)
-        return math.atan2(x, y) * RAD_TO_DEG
+    except KeyboardInterrupt:
+        print("Program stopped manually.")
+    finally:
+        speed_controller.stop()
 
-    def drive(self, distance, turn):
-        full_speed = 100
-        stop_speed = 0
-        if distance < 8:
-            speed = stop_speed + ((full_speed - stop_speed) * (distance / 8))
-        else:
-            speed = full_speed
-
-        # Apply the turn calculations based on the required heading adjustment
-        t_modifier = (180 - abs(turn)) / 180
-        auto_steering_adjustment = (t_modifier, 1) if turn < 0 else (1, t_modifier)
-
-        speed_a = self.map_speed(speed, RC_NEUTRAL, RC_MIN, *auto_steering_adjustment[0])
-        speed_b = self.map_speed(speed, RC_NEUTRAL, RC_MAX, *auto_steering_adjustment[1])
-        self.set_speed('left_front', speed_a)
-        self.set_speed('right_front', speed_b)
-
-    def map_speed(self, speed, neutral, limit, adjustment_factor=1):
-        return int((limit - neutral) * adjustment_factor + neutral)
-
-    def stop(self):
-        for motor in self.motors.values():
-            motor.set_power(0)
-
-# Main program setup
-if __name__ == "__main__":
-    config = {"motors": {
-        "left_front": {"pin_pwm": "P13", "pin_dir": "D4", "reverse": False},
-        "right_front": {"pin_pwm": "P12", "pin_dir": "D5", "reverse": False},
-        "left_rear": {"pin_pwm": "P8", "pin_dir": "D11", "reverse": False},
-        "right_rear": {"pin_pwm": "P9", "pin_dir": "D15", "reverse": False}
-    },}
-    robot = Robot(config)
-    destination = (62.878815, 27.637536)  # Example coordinates
-    robot.drive_to(destination, 300)  # Drive to destination with a timeout of 300 seconds
+if __name__ == '__main__':
+    main_control_loop()
