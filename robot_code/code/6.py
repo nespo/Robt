@@ -105,7 +105,7 @@ def navigate_to_goal(start_gps, goal_gps, robot):
             robot.turn_left(abs(turn_needed))
         
         # Move forward in small increments to continuously adjust the path
-        robot.forward(30)  # Adjust power as necessary for real robot speed
+        robot.forward(50)  # Adjust power as necessary for real robot speed
         time.sleep(1)  # Assuming a delay to allow for movement before the next GPS read
 
         # Update current_position with the new GPS coordinates
