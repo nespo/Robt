@@ -82,27 +82,6 @@ def calculate_bearing(coord1, coord2):
 
     return bearing
 
-def navigate_obstacles(robot, us):
-    scan_results = []
-    for angle in range(-90, 91, 18):
-        status = us.get_status_at(angle)
-        scan_results.append(status)
-
-    # Automatically move forward but adjust based on obstacles
-    if all(status == 2 for status in scan_results):
-        robot.forward(70)
-    elif any(status == 0 for status in scan_results):
-        robot.backward(50)
-        time.sleep(1)
-        if scan_results.index(0) < len(scan_results) / 2:
-            robot.turn_right(70)
-        else:
-            robot.turn_left(70)
-        time.sleep(1)
-    else:
-        return True
-    # No need to stop the robot here if we want continuous movement in auto mode
-
 def navigate_to_goal(robot, start_gps, goal_gps):
     current_position = start_gps
     while True:
@@ -111,41 +90,43 @@ def navigate_to_goal(robot, start_gps, goal_gps):
             print("Arrived at the destination")
             robot.stop()
             break
-
         bearing = calculate_bearing(current_position, goal_gps)
-        current_yaw = get_current_heading()
-
-        turn_needed = (bearing - current_yaw + 360) % 360
-        if turn_needed > 180:
-            turn_needed -= 360
-
-        print(f"Distance: {distance} cm, Bearing: {bearing} degrees, Turn_needed: {turn_needed}")
-        adjust_heading(robot, turn_needed)
-
+        adjust_to_goal(robot, bearing)
+        time.sleep(1)
         current_position = get_current_gps()
 
-def adjust_heading(robot, turn_needed):
-    if turn_needed > 5:
-        robot.turn_right(min(abs(turn_needed), 30))
-    elif turn_needed < -5:
-        robot.turn_left(min(abs(turn_needed), 30))
-    time.sleep(0.5)
+def adjust_to_goal(robot, target_bearing):
+    current_yaw = get_current_heading()
+    turn_needed = (target_bearing - current_yaw + 360) % 360
+    if turn_needed > 180:
+        turn_needed -= 360
+    if abs(turn_needed) > 5:
+        if turn_needed > 0:
+            robot.turn_right(min(abs(turn_needed), 30))
+        else:
+            robot.turn_left(min(abs(turn_needed), 30))
+    robot.forward(50)
+    time.sleep(1)
 
-def obstacle_avoidance(robot, us):
+def obstacle_avoidance(robot, us, goal_gps):
     while True:
         scan_results = [us.get_status_at(angle) for angle in range(-90, 91, 18)]
         if any(status == 0 for status in scan_results):
             robot.stop()
-            handle_obstacles(robot, scan_results)
+            handle_obstacles(robot, scan_results, goal_gps)
 
-def handle_obstacles(robot, scan_results):
+def handle_obstacles(robot, scan_results, goal_gps):
     obstacle_index = scan_results.index(0)
     if obstacle_index < len(scan_results) / 2:
-        robot.turn_right(90)
+        robot.turn_right(70)
     else:
-        robot.turn_left(90)
-    robot.forward(100)
+        robot.turn_left(70)
+    robot.forward(50)  # Move out of the obstacle's way
     time.sleep(1)
+    # Reorient towards the goal
+    current_position = get_current_gps()
+    bearing_to_goal = calculate_bearing(current_position, goal_gps)
+    adjust_to_goal(robot, bearing_to_goal)
 
 def main():
     robot = Robot(config)
@@ -154,9 +135,8 @@ def main():
     start_gps = (current_lat, current_lon)
     goal_gps = (62.878815, 27.637536)
 
-    # Start threads
     navigation_thread = threading.Thread(target=navigate_to_goal, args=(robot, start_gps, goal_gps))
-    obstacle_thread = threading.Thread(target=obstacle_avoidance, args=(robot, us))
+    obstacle_thread = threading.Thread(target=obstacle_avoidance, args=(robot, us, goal_gps))
 
     navigation_thread.start()
     obstacle_thread.start()
