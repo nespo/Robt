@@ -1,7 +1,6 @@
 import numpy as np
 import heapq
 import utm
-
 import os
 import sys
 
@@ -16,7 +15,6 @@ from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
-
 
 ultrasonic = Ultrasonic(Pin('D8'), Pin('D9'))
 
@@ -113,6 +111,7 @@ def ultrasonic_data():
     sensor_data = ultrasonic.full_scan()
     print(sensor_data)
     return sensor_data
+
 # VFH+ algorithm class
 class VFHPlus:
     def __init__(self, robot_size, sector_angle, threshold):
