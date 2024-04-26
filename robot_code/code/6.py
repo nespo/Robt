@@ -49,7 +49,7 @@ def haversine(coord1, coord2):
 
     return distance * 100000
 
-def calculate_bearing(lat1, lon1, lat2, lon2):
+def calculate_bearing(coord1, coord2):
     """
     This function calculates the initial bearing angle between two points on Earth in degrees.
 
@@ -62,6 +62,9 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     Returns:
         float: The initial bearing angle in degrees from the first point to the second point.
     """
+
+    lat1, lon1 = coord1
+    lat2, lon2 = coord2
     # Convert decimal degrees to radians
     lat1 = math.radians(lat1)
     lon1 = math.radians(lon1)
