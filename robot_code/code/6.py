@@ -14,13 +14,13 @@ from robot_code.modules.pwm import PWM
 from robot_code.modules.pin import Pin
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.nav import get_current_gps, get_current_heading
+from robot_code.code.motor_control import Robot
 
 # Initialization
-speed_controller = Speed()
+speed_controller = Robot(config)
 ultrasonic_sensor = Ultrasonic(Pin('D8'))
 target_waypoints = [(62.878817, 27.637539), (62.878815, 27.637536)]  # List of waypoints (lat, lon)
 current_waypoint_index = 0
-turn_power_reduction = 0.7
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
     # This function calculates the bearing between two GPS coordinates
@@ -40,7 +40,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     delta_lambda = math.radians(lon2 - lon1)
     a = math.sin(delta_phi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+    return (R * c) / 100
 
 def navigate_to_waypoint(current_lat, current_lon, target_lat, target_lon):
     target_bearing = calculate_bearing(current_lat, current_lon, target_lat, target_lon)
@@ -50,15 +50,15 @@ def navigate_to_waypoint(current_lat, current_lon, target_lat, target_lon):
     
     # Determine turn direction and magnitude
     if angle_diff > 180:
-        speed_controller.turn_left(100 * turn_power_reduction)  # Adjust as necessary
+        speed_controller.turn_left(100)  # Adjust as necessary
     else:
-        speed_controller.turn_right(100 * turn_power_reduction)
+        speed_controller.turn_right(100)
     
     # Move forward based on distance to the next waypoint
-    if distance > 10:
-        speed_controller.set_speed(80)  # Moderate speed
+    if distance > 100:
+        speed_controller.forward(80)  # Moderate speed
     else:
-        speed_controller.set_speed(int(distance * 8))  # Slow down as it gets closer
+        speed_controller.forward(int(distance * 8))  # Slow down as it gets closer
 
 def main_control_loop():
     global current_waypoint_index
@@ -82,7 +82,7 @@ def main_control_loop():
             # Check for obstacles
             distance = ultrasonic_sensor.get_distance()
             if distance < 30:  # distance in cm
-                speed_controller.set_speed(0)  # Stop if an obstacle is too close
+                speed_controller.stop()  # Stop if an obstacle is too close
                 print("Obstacle detected! Stopping.")
                 time.sleep(2)  # Wait for a bit before trying again
 
