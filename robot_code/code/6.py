@@ -81,6 +81,27 @@ def calculate_bearing(coord1, coord2):
 
     return bearing
 
+def navigate_obstacles(robot, us):
+    scan_results = []
+    for angle in range(-90, 91, 18):
+        status = us.get_status_at(angle)
+        scan_results.append(status)
+
+    # Automatically move forward but adjust based on obstacles
+    if all(status == 2 for status in scan_results):
+        robot.forward(70)
+    elif any(status == 0 for status in scan_results):
+        robot.backward(50)
+        time.sleep(1)
+        if scan_results.index(0) < len(scan_results) / 2:
+            robot.turn_right(70)
+        else:
+            robot.turn_left(70)
+        time.sleep(1)
+    else:
+        return True
+    # No need to stop the robot here if we want continuous movement in auto mode
+
 def navigate_to_goal(start_gps, goal_gps, robot):
     """Navigate from start to goal, dynamically adjusting the path."""
     current_position = start_gps
@@ -103,22 +124,39 @@ def navigate_to_goal(start_gps, goal_gps, robot):
         if turn_needed > 0:
             robot.turn_right(abs(turn_needed))
             time.sleep(1)
+            obstacle = navigate_obstacles(robot, us)
+            if obstacle:
+                continue
+            else:
+                robot.backward(50)
         else:
             robot.turn_left(abs(turn_needed))
             time.sleep(1)
+            obstacle = navigate_obstacles(robot, us)
+            if obstacle:
+                continue
+            else:
+                robot.backward(50)
         
         # Move forward in small increments to continuously adjust the path
-        robot.forward(50)  # Adjust power as necessary for real robot speed
-        time.sleep(1)  # Assuming a delay to allow for movement before the next GPS read
+        obstacle = navigate_obstacles(robot, us)
+        if obstacle:
+            robot.forward(50)  # Adjust power as necessary for real robot speed
+            time.sleep(1)
+        else:
+            robot.backward(50)
 
+        # Assuming a delay to allow for movement before the next GPS read
         # Update current_position with the new GPS coordinates
         current_position = get_current_gps()
 
         print(f"Moving to position: {current_position}, Distance left: {distance} cm, Bearing needed: {bearing} degrees")
 
+
 # Example usage:
 if __name__ == "__main__":
     robot = Robot(config)
+    us = Ultrasonic(Pin('D8'), Pin('D9'))
     current_lat, current_lon = get_current_gps()  # Make sure this function returns the latest valid GPS coordinates
     start_gps = (current_lat, current_lon)
     navigate_to_goal(start_gps, goal_gps, robot)
