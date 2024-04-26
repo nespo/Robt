@@ -170,9 +170,9 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
             required_turn = direction - current_heading
             print(f"reuired turn: {required_turn}")
             if required_turn < 0:
-                robot.left(abs(required_turn))
+                robot.turn_left(abs(required_turn))
             elif required_turn > 0:
-                robot.right(abs(required_turn))
+                robot.turn_right(abs(required_turn))
             robot.forward(50)
         else:
             print("Obstacle detected, recalculating path...")
