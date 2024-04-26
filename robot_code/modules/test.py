@@ -1,13 +1,20 @@
 import serial
+import time
 
-ser = serial.Serial(port="/dev/ttyUSB0", baudrate=256000)
+# Setup serial connection
+ser = serial.Serial('/dev/ttyUSB0', 256000, timeout=1)
+
+# Attempt to read data
 try:
+    print("Starting to read from serial port...")
+    time.sleep(2)  # Give it a moment before reading
     while True:
-        if ser.in_waiting:
+        if ser.in_waiting > 0:
             data = ser.read(ser.in_waiting)
-            print("Received:", data)
+            print('Received:', data)
+        time.sleep(1)
 except KeyboardInterrupt:
-    print("Stopped by user")
+    print("Program interrupted by user.")
 finally:
     ser.close()
-    print("Serial port closed")
+    print("Serial port closed.")
