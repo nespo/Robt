@@ -102,11 +102,25 @@ def adjust_to_goal(robot, target_bearing):
         turn_needed -= 360
     if abs(turn_needed) > 5:
         if turn_needed > 0:
-            robot.turn_right(min(abs(turn_needed), 30))
+            robot.turn_right(30, abs(turn_needed) / 30)  # Assuming turn power can be proportional
         else:
-            robot.turn_left(min(abs(turn_needed), 30))
+            robot.turn_left(30, abs(turn_needed) / 30)
     robot.forward(50)
     time.sleep(1)
+
+def handle_obstacles(robot, scan_results, goal_gps):
+    obstacle_index = scan_results.index(0)
+    if obstacle_index < len(scan_results) / 2:
+        robot.turn_right(30)  # Assuming moderate turn to reposition
+    else:
+        robot.turn_left(30)  # Assuming moderate turn to reposition
+    robot.forward(50)  # Move out of the obstacle's way
+    time.sleep(1)
+    # Reorient towards the goal
+    current_position = get_current_gps()
+    bearing_to_goal = calculate_bearing(current_position, goal_gps)
+    adjust_to_goal(robot, bearing_to_goal)
+
 
 def obstacle_avoidance(robot, us, goal_gps):
     while True:
@@ -115,18 +129,6 @@ def obstacle_avoidance(robot, us, goal_gps):
             robot.stop()
             handle_obstacles(robot, scan_results, goal_gps)
 
-def handle_obstacles(robot, scan_results, goal_gps):
-    obstacle_index = scan_results.index(0)
-    if obstacle_index < len(scan_results) / 2:
-        robot.turn_right(70)
-    else:
-        robot.turn_left(70)
-    robot.forward(50)  # Move out of the obstacle's way
-    time.sleep(1)
-    # Reorient towards the goal
-    current_position = get_current_gps()
-    bearing_to_goal = calculate_bearing(current_position, goal_gps)
-    adjust_to_goal(robot, bearing_to_goal)
 
 def main():
     robot = Robot(config)
