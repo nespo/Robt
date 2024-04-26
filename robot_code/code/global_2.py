@@ -15,9 +15,12 @@ from robot_code.code.motor_control import Robot
 from robot_code.modules.lidar import LidarScanner, ObstacleChecker
 from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
+from robot_code.modules.ultrasonic import Ultrasonic
+from robot_code.modules.pin import Pin
 
 lidar_scanner = LidarScanner('/dev/ttyUSB0')
 obstacle_checker = ObstacleChecker(lidar_scanner)
+ultrasonic = Ultrasonic(Pin('D8'), Pin('D9'))
 
 class NavigationSystem:
     def __init__(self, grid_resolution=0.5, grid_size=2000):
@@ -118,6 +121,10 @@ def rplidar_data():
 
     return sensor_data
 
+def ultrasonic_data():
+    sensor_data = ultrasonic.full_scan()
+    print(sensor_data)
+    return sensor_data
 # VFH+ algorithm class
 class VFHPlus:
     def __init__(self, robot_size, sector_angle, threshold):
@@ -166,7 +173,8 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
     print("Current heading:", current_heading)
     
     for step in global_path:
-        sensor_data = rplidar_data()
+        #sensor_data = rplidar_data()
+        sensor_data = ultrasonic_data()
         nav_system.update_obstacles(sensor_data)
         histogram = vfh.update_histogram(sensor_data)
         direction = vfh.find_best_direction(histogram)

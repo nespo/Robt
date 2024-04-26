@@ -103,3 +103,15 @@ class Ultrasonic:
             self.scan_list = []  # Reset scan list for next full scan
             return temp_scan_list
         return False
+    
+    def full_scan(self):
+        """
+        Performs a full 180-degree scan, collecting angle-distance pairs.
+        """
+        full_scan_data = []
+        for angle in range(self.min_angle, self.max_angle + self.STEP, self.STEP):
+            distance = self.get_distance_at(angle)
+            if distance >= 0:  # Assuming negative distances are errors/timeouts
+                full_scan_data.append((angle, distance))
+        return full_scan_data
+

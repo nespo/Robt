@@ -1,21 +1,26 @@
-import serial
-import time
+from pyrplidar import PyRPlidar
 
-# Setup serial connection
-ser = serial.Serial('/dev/ttyUSB0', 256000, timeout=1)
+lidar = PyRPlidar()
+lidar.connect(port="COM4", baudrate=256000, timeout=3)
+# Linux   : "/dev/ttyUSB0"
+# MacOS   : "/dev/cu.SLAB_USBtoUART"
+# Windows : "COM5"
 
-try:
-    print("Starting to read from serial port...")
-    time.sleep(2)  # Give it a moment before reading
-    while True:
-        data = ser.read(100)  # Attempt to read 100 bytes
-        if data:
-            print('Received:', data)
-        else:
-            print('No data received.')
-        time.sleep(1)
-except KeyboardInterrupt:
-    print("Program interrupted by user.")
-finally:
-    ser.close()
-    print("Serial port closed.")
+
+info = lidar.get_info()
+print("info :", info)
+
+health = lidar.get_health()
+print("health :", health)
+
+samplerate = lidar.get_samplerate()
+print("samplerate :", samplerate)
+
+
+scan_modes = lidar.get_scan_modes()
+print("scan modes :")
+for scan_mode in scan_modes:
+    print(scan_mode)
+
+
+lidar.disconnect()
