@@ -64,7 +64,7 @@ def main_control_loop():
     global current_waypoint_index
     try:
         while current_waypoint_index < len(target_waypoints):
-            current_lat, current_lon = get_current_gps  # Fetch current GPS coordinates
+            current_lat, current_lon = get_current_gps()  # Fetch current GPS coordinates
             target_lat, target_lon = target_waypoints[current_waypoint_index]
             
             # Check if current waypoint is reached
