@@ -87,7 +87,7 @@ def main_control_loop(target_lat, target_lon, ultrasonic_sensor, turn_power_redu
         print("Program stopped manually.")
 
 if __name__ == '__main__':
-    ultrasonic_sensor = Ultrasonic(Pin("P1"), Pin("P2"))  # Initialize with actual trigger and echo pins
+    ultrasonic_sensor = Ultrasonic(Pin("D8"), Pin("D9"))  # Initialize with actual trigger and echo pins
     target_latitude = 62.878815 # Example target latitude
     target_longitude = 27.637536  # Example target longitude
     turn_power_reduction = 0.7
