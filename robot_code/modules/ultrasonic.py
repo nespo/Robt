@@ -109,9 +109,14 @@ class Ultrasonic:
         Performs a full 180-degree scan, collecting angle-distance pairs.
         """
         full_scan_data = []
-        for angle in range(self.min_angle, self.max_angle + self.STEP, self.STEP):
+        start_angle = int(self.min_angle)
+        end_angle = int(self.max_angle)
+        step = int(self.STEP)
+        
+        for angle in range(start_angle, end_angle + step, step):
             distance = self.get_distance_at(angle)
             if distance >= 0:  # Assuming negative distances are errors/timeouts
                 full_scan_data.append((angle, distance))
         return full_scan_data
+
 
