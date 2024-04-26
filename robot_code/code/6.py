@@ -82,28 +82,36 @@ def calculate_bearing(coord1, coord2):
     return bearing
 
 def navigate_to_goal(start_gps, goal_gps, robot):
-    """Navigate from start to goal using simple straight-line approximation."""
-    distance = haversine(start_gps, goal_gps)
-    bearing = calculate_bearing(start_gps, goal_gps)
+    """Navigate from start to goal, dynamically adjusting the path."""
+    current_position = start_gps
 
-    # Simulate navigation: For testing, let's assume one command per decision point
-    print(f"Distance: {distance} cm, Bearing: {bearing} degrees")
-    
-    # Adjust robot's bearing to match the goal bearing
-    current_yaw = get_current_heading()
-    turn_needed = bearing - current_yaw
-    if turn_needed > 0:
-        robot.turn_right(abs(turn_needed))
-    else:
-        robot.turn_left(abs(turn_needed))
-    
-    # For simplicity, let's assume we move in steps of 10 cm
-    steps = int(distance / 10)
-    for _ in range(steps):
+    while True:
+        distance = haversine(current_position, goal_gps)
+        if distance < 10:  # If within 10 cm of the goal, consider it reached
+            print("Arrived at the destination")
+            robot.stop()
+            break
+
+        bearing = calculate_bearing(current_position, goal_gps)
+        current_yaw = get_current_heading()
+
+        print(f"Distance: {distance} cm, Bearing: {bearing} degrees")
+        turn_needed = bearing - current_yaw
+
+        # Adjust the robot's bearing to match the goal bearing
+        if turn_needed > 0:
+            robot.turn_right(abs(turn_needed))
+        else:
+            robot.turn_left(abs(turn_needed))
+        
+        # Move forward in small increments to continuously adjust the path
         robot.forward(30)  # Adjust power as necessary for real robot speed
+        time.sleep(1)  # Assuming a delay to allow for movement before the next GPS read
 
-    robot.stop()
-    print("Arrived at the destination")
+        # Update current_position with the new GPS coordinates
+        current_position = get_current_gps()
+
+        print(f"Moving to position: {current_position}, Distance left: {distance} cm, Bearing needed: {bearing} degrees")
 
 # Example usage:
 if __name__ == "__main__":
