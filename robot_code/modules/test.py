@@ -1,4 +1,4 @@
-from pyrplidar import PyRPlidar, PyRPlidarException
+from pyrplidar import PyRPlidar
 
 try:
     lidar = PyRPlidar()
@@ -30,7 +30,7 @@ try:
         samplerate = lidar.get_samplerate()
         print("Samplerate:", samplerate)
     
-    except PyRPlidarException as e:
+    except IndexError as e:
         print("Error:", e)
     
     finally:
@@ -38,5 +38,5 @@ try:
         lidar.disconnect()
         print("PyRPlidar Info: Device disconnected")
 
-except PyRPlidarException as e:
+except Exception as e:
     print("Connection Error:", e)
