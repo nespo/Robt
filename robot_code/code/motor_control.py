@@ -54,6 +54,7 @@ class Robot:
 
     def forward(self, power):
         power = abs(power)
+        print(f"Moving forward with power {power}")
         self.motors["left_front"].set_power(-power+10)
         self.motors["left_rear"].set_power(power)
         self.motors["right_front"].set_power(-power+10)
@@ -62,6 +63,7 @@ class Robot:
         
     def backward(self, power):
         power = abs(power)
+        print(f"Moving backward with power {power}")
         self.motors["left_front"].set_power(power-10)
         self.motors["left_rear"].set_power(-power)
         self.motors["right_front"].set_power(power-10)
@@ -72,6 +74,7 @@ class Robot:
             power = abs(power)
             # Inside motors are the left motors when turning left
             inside_power = power * turn_power_reduction
+            print(f"Turning left with power {power} and inside power {inside_power}")
             self.motors["left_front"].set_power(-inside_power)
             self.motors["left_rear"].set_power(-inside_power)
             self.motors["right_front"].set_power(power)
@@ -81,6 +84,7 @@ class Robot:
         power = abs(power)
         # Inside motors are the right motors when turning right
         inside_power = power * turn_power_reduction
+        print(f"Turning right with power {power} and inside power {inside_power}")
         self.motors["left_front"].set_power(power)
         self.motors["left_rear"].set_power(power)
         self.motors["right_front"].set_power(-inside_power)
@@ -88,6 +92,7 @@ class Robot:
 
 
     def stop(self):
+        print("Stopping the robot")
         self.motors["left_front"].set_power(0)
         self.motors["left_rear"].set_power(0)
         self.motors["right_front"].set_power(0)
