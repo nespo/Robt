@@ -24,11 +24,12 @@ def read_serial_data():
             buffer += data.decode('utf-8', errors='ignore')
             if '\n' in buffer:
                 line, buffer = buffer.split('\n', 1)
-                print(f"Read line: {line.strip()}")  # Debug output
                 process_line(line.strip())
 
 def process_line(line):
-    print(f"Processing line: {line}")  # Debug output
+    if 'Time' in line:
+        line = line.split(';', 1)[-1].strip()
+    print("Processed Line:", line)  # Debug output
 
     # Improved GPS handling with separate processing for concatenated sentences
     if '$' in line:
@@ -43,12 +44,13 @@ def process_line(line):
             update_error_data(line)
 
 def parse_gps_data(line):
-    print(f"Parsing GPS data: {line}")  # Debug output
     if valid_nmea_sentence(line):
         if '$GPRMC' in line:
             handle_gprmc(line)
         elif '$GPGGA' in line:
             handle_gpgga(line)
+    '''else:
+        print(f"Invalid NMEA sentence: {line}")'''
 
 def valid_nmea_sentence(nmea_sentence):
     try:
@@ -59,13 +61,13 @@ def valid_nmea_sentence(nmea_sentence):
         is_valid = hex(calculated_checksum)[2:].upper() == checksum.upper()
         if not is_valid:
             print(f"Checksum mismatch: Calculated {hex(calculated_checksum)[2:].upper()}, Expected {checksum.upper()}")
+            pass
         return is_valid
     except ValueError:
         print(f"Failed to split sentence for checksum: {nmea_sentence}")
         return False
 
 def handle_gprmc(sentence):
-    print(f"Handling GPRMC: {sentence}")  # Debug output
     parts = sentence.split(',')
     if len(parts) > 8 and parts[2] == 'A':
         latitude = convert_to_decimal(parts[3], parts[4])
@@ -77,7 +79,6 @@ def handle_gprmc(sentence):
             current_gps['date'] = parts[9]
 
 def handle_gpgga(sentence):
-    print(f"Handling GPGGA: {sentence}")  # Debug output
     parts = sentence.split(',')
     if len(parts) > 6 and parts[6] != '0':
         latitude = convert_to_decimal(parts[2], parts[3])
@@ -89,7 +90,6 @@ def handle_gpgga(sentence):
             current_gps['altitude'] = altitude
 
 def update_imu_data(line):
-    print(f"Updating IMU data: {line}")  # Debug output
     try:
         roll, pitch, yaw = map(float, re.findall(r"[-\d.]+", line))
         with data_lock:
@@ -98,9 +98,9 @@ def update_imu_data(line):
             current_orientation['yaw'] = yaw
     except ValueError as e:
         print(f"IMU data format error: {e}")
+        pass
 
 def update_error_data(line):
-    print(f"Updating error data: {line}")  # Debug output
     errors = {k: float(v) for k, v in re.findall(r"(\w+): (-?\d+\.\d+)", line)}
     with data_lock:
         current_errors.update(errors)
@@ -148,6 +148,7 @@ def get_current_heading():
                 return yaw
             print("Waiting for valid heading data...")
         time.sleep(1)
+
 
 
 # Start the serial reading thread
