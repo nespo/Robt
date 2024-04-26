@@ -102,8 +102,10 @@ def navigate_to_goal(start_gps, goal_gps, robot):
         # Adjust the robot's bearing to match the goal bearing
         if turn_needed > 0:
             robot.turn_right(abs(turn_needed))
+            time.sleep(1)
         else:
             robot.turn_left(abs(turn_needed))
+            time.sleep(1)
         
         # Move forward in small increments to continuously adjust the path
         robot.forward(50)  # Adjust power as necessary for real robot speed
