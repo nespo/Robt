@@ -69,7 +69,7 @@ def main_control_loop():
             target_lat, target_lon = target_waypoints[current_waypoint_index]
             
             # Check if current waypoint is reached
-            if haversine_distance(current_lat, current_lon, target_lat, target_lon) < 5:
+            if haversine_distance(current_lat, current_lon, target_lat, target_lon) < 0.5:
                 print("Waypoint reached: ", target_lat, target_lon)
                 current_waypoint_index += 1  # Move to next waypoint
                 if current_waypoint_index >= len(target_waypoints):
