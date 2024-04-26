@@ -18,8 +18,7 @@ from robot_code.modules.nav import get_current_gps, get_current_heading
 from robot_code.modules.ultrasonic import Ultrasonic
 from robot_code.modules.pin import Pin
 
-#lidar_scanner = LidarScanner('/dev/ttyUSB0')
-#obstacle_checker = ObstacleChecker(lidar_scanner)
+
 ultrasonic = Ultrasonic(Pin('D8'), Pin('D9'))
 
 class NavigationSystem:
@@ -110,16 +109,6 @@ class NavigationSystem:
                         heapq.heappush(oheap, (fscore[neighbor], neighbor))
         print("No path found.")
         return False  # Return False if no path is found
-
-# Function to simulate receiving data from RPLIDAR A1M8
-'''def rplidar_data():
-    sensor_data = obstacle_checker.check_for_obstacles()
-
-    # Ensure all sensor data are finite and replace 'inf' and NaN with a high but finite value
-    #valid_sensor_data = np.where(np.isfinite(sensor_data), sensor_data, 1000)
-    #print("Valid Sensor Data:", valid_sensor_data)  # Debug print
-
-    return sensor_data'''
 
 def ultrasonic_data():
     sensor_data = ultrasonic.full_scan()
