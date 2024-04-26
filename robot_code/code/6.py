@@ -1,6 +1,14 @@
 import threading
 import math
 import time
+
+import os
+import sys
+
+# Correct library import paths
+script_dir = os.path.dirname(os.path.realpath(__file__))
+parent_dir = os.path.join(script_dir, '..', '..')
+sys.path.append(os.path.abspath(parent_dir))
 from robot_code.modules.nav import get_current_gps, get_current_heading
 from robot_code.modules.motor import Motor
 from robot_code.modules.speed import Speed
