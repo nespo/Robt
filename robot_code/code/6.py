@@ -18,7 +18,7 @@ from robot_code.code.motor_control import Robot
 
 # Initialization
 speed_controller = Robot(config)
-ultrasonic_sensor = Ultrasonic(Pin('D8'))
+ultrasonic_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
 target_waypoints = [(62.878817, 27.637539), (62.878815, 27.637536)]  # List of waypoints (lat, lon)
 current_waypoint_index = 0
 
