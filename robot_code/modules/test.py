@@ -41,7 +41,9 @@ try:
             print("Failed to get samplerate.")
 
     except IndexError as e:
-        # Handle IndexError specifically
+        # Log the exact location of the IndexError
+        import traceback
+        traceback.print_exc()
         print("Error: Index out of range", e)
 
     except Exception as e:
