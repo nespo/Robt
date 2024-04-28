@@ -37,7 +37,8 @@ class AutonomousPiCar:
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        previous_lat, previous_lon = get_current_gps()
+        previous_lat, previous_lon, previous_quality = self.get_valid_gps_data()
+
         self.travel_path.append((previous_lat, previous_lon))
         print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
         self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
@@ -45,7 +46,7 @@ class AutonomousPiCar:
 
         try:
             while not self.is_target_reached(previous_lat, previous_lon) and self.running:
-                current_lat, current_lon = get_current_gps()
+                current_lat, current_lon, _ = self.get_valid_gps_data()
                 self.travel_path.append((current_lat, current_lon))
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
 
@@ -70,6 +71,18 @@ class AutonomousPiCar:
         except KeyboardInterrupt:
             print("KeyboardInterrupt caught. Stopping robot...")
             self.stop()
+
+    def get_valid_gps_data(self):
+        """Fetch GPS data, ensuring it meets validity criteria including HDOP or fix quality."""
+        lat, lon, quality = get_current_gps()  # Assuming get_current_gps now also returns 'quality'
+        while lat is None or lon is None or not self.is_valid_gps_data(lat, lon) or quality < 2:
+            time.sleep(1)  # Wait and retry if the data is not valid
+            lat, lon, quality = get_current_gps()
+        return lat, lon, quality
+
+    def is_valid_gps_data(self, lat, lon):
+        """Validate GPS data within the standard range for latitude and longitude."""
+        return -90 <= lat <= 90 and -180 <= lon <= 180
 
     def navigate_obstacles(self):
         while self.running:
