@@ -61,6 +61,16 @@ class NavigationSystem:
                 return True
         return False
 
+    def plan_path(self, start_lat, start_lon, goal_lat, goal_lon):
+        print("Planning path from start to goal.")
+        self.update_current_position(start_lat, start_lon)
+        start_utm = self.gps_to_utm(start_lat, start_lon)
+        goal_utm = self.gps_to_utm(goal_lat, goal_lon)
+        start_grid = self.utm_to_grid(*start_utm)
+        goal_grid = self.utm_to_grid(*goal_utm)
+        path = self.a_star_search(start_grid, goal_grid, self.grid)
+        return path
+
     def a_star_search(self, start, goal, grid):
         print("Starting A* search from", start, "to", goal)
         neighbors = [(0,1), (1,0), (0,-1), (-1,0), (1,1), (-1,-1), (1,-1), (-1,1)]
@@ -71,7 +81,7 @@ class NavigationSystem:
         oheap = []
 
         heapq.heappush(oheap, (fscore[start], start))
-
+        
         while oheap:
             current = heapq.heappop(oheap)[1]
             if current == goal:
@@ -120,7 +130,6 @@ class VFHPlus:
             if distance > 0:
                 sector = int(angle / self.sector_angle) % num_sectors
                 histogram[sector] += 1 / distance
-        print(f"Histogram: {histogram}")
         return histogram
 
     def find_best_direction(self, histogram):
@@ -133,27 +142,17 @@ class VFHPlus:
         print("Best direction found:", best_angle)
         return best_angle
 
-def wait_until_turn_complete(robot, target_heading, tolerance=5):
+def wait_until_turn_complete(target_heading, tolerance=5):
     """
     Blocks execution until the robot's heading is within a certain tolerance of the target heading.
     `tolerance` is the acceptable error in degrees.
     """
     current_heading = get_current_heading()
     while abs(current_heading - target_heading) > tolerance:
-        error = target_heading - current_heading
-        power = max(10, min(100, abs(int(error * 0.5))))  # Proportional control factor
-
-        if error < 0:
-            robot.turn_left(power)
-        elif error > 0:
-            robot.turn_right(power)
-
         time.sleep(0.1)  # Check every 100 milliseconds
         current_heading = get_current_heading()
-        print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
-
+        print(f"Current heading: {current_heading}, Target: {target_heading}")
     print("Turn complete. Current heading:", current_heading)
-    robot.stop()  # Stop turning once the heading is achieved
 
 # Main loop for dynamic navigation
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
@@ -173,15 +172,15 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
     vfh = VFHPlus(robot_size=20, sector_angle=15, threshold=0.3)
     
     # Adjust the robot's heading based on the best navigable direction found
-    current_heading = get_current_gps()[1]
+    current_heading = get_current_heading()
     print("Current heading:", current_heading)
 
     for step in global_path:
         sensor_data = ultrasonic_data()
         if nav_system.update_obstacles(sensor_data):
             print("Obstacle detected, recalculating path...")
-            dynamic_navigation(nav_system, get_current_gps()[0], get_current_gps()[1], goal_lat, goal_lon, robot)
-            return  # Important to return to avoid further execution after recursion
+            dynamic_navigation(nav_system, *nav_system.gps_to_utm(*step), *goal_utm)
+            break
 
         histogram = vfh.update_histogram(sensor_data)
         direction = vfh.find_best_direction(histogram)
@@ -198,13 +197,13 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
                 robot.turn_right(turn_power)
 
             # Wait for the turn to complete
-            wait_until_turn_complete(robot, target_heading)
+            wait_until_turn_complete(target_heading)
 
             # Move forward after the turn is complete
             robot.forward(min(50, 100))  # Example forward power
         else:
             print("No navigable direction found, recalculating path...")
-            dynamic_navigation(nav_system, get_current_gps()[0], get_current_gps()[1], goal_lat, goal_lon, robot)
+            dynamic_navigation(nav_system, *nav_system.gps_to_utm(*step), *goal_utm)
             break
 
 

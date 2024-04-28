@@ -1,49 +1,66 @@
-from math import sin, cos, sqrt, atan2, radians
+import serial
+import struct
+import time
+import logging
 
-# Function to calculate the distance between two points on Earth
-def calculate_distance(lat1, lon1, lat2, lon2):
-  """
-  This function calculates the distance between two points on Earth in kilometers.
+logging.basicConfig(level=logging.DEBUG)
 
-  Args:
-      lat1 (float): Latitude of the first point in degrees.
-      lon1 (float): Longitude of the first point in degrees.
-      lat2 (float): Latitude of the second point in degrees.
-      lon2 (float): Longitude of the second point in degrees.
+class RPLidar:
+    def __init__(self, port, baudrate=115200, timeout=3):
+        self.ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
+        self.ser.reset_input_buffer()
+        logging.debug(f"Serial port {port} opened with baudrate {baudrate}")
 
-  Returns:
-      float: The distance between the two points in kilometers.
-  """
-  # Convert decimal degrees to radians
-  lat1 = radians(lat1)
-  lon1 = radians(lon1)
-  lat2 = radians(lat2)
-  lon2 = radians(lon2)
+    def send_command(self, cmd, payload=[]):
+        sync_byte = 0xA5
+        request = bytearray([sync_byte, cmd]) + bytearray(payload)
+        self.ser.write(request)
+        logging.debug(f"Command sent: {request.hex()}")
 
-  # Earth radius in kilometers
-  R = 6371
+    def start_motor(self):
+        self.send_command(0xF0, [0x02, 0x94])
+        logging.debug("Motor start command issued")
 
-  # Calculate the difference in latitude and longitude
-  dlon = lon2 - lon1
-  dlat = lat2 - lat1
+    def stop_motor(self):
+        self.send_command(0xF0, [0x00, 0x00])
+        logging.debug("Motor stop command issued")
 
-  # Haversine formula
-  a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1) * cos(lat2) * sin(dlon / 2) * sin(dlon / 2)
-  c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    def get_health(self):
+        self.send_command(0x52)
+        response = self.ser.read(10)
+        logging.debug(f"Health Response: {response}")
+        if len(response) < 7:
+            logging.error("Incomplete health status response")
+            return None
+        if response[0] != 0xA5:
+            logging.error("Invalid start byte in health status response")
+            return None
+        health_status = struct.unpack('<BBB', response[4:7])
+        return health_status
 
-  # Distance in kilometers
-  distance = R * c
+    def read_scan(self):
+        self.send_command(0x20)
+        time.sleep(1)
+        data = []
+        while True:
+            response = self.ser.read(5)
+            logging.debug(f"Scan Data Chunk: {response}")
+            if not response:
+                break
+            data.append(response)
+        return data
 
-  return distance
+    def close(self):
+        self.ser.close()
+        logging.debug("Serial port closed")
 
-# Provided coordinates
-lat1, lon1 = 62.8788833618, 27.6375541687
-lat2, lon2 = 62.878815, 27.637536
-
-# Calculate the distance
-distance = calculate_distance(lat1, lon1, lat2, lon2)
-
-# Convert kilometers to centimeters and round to two decimal places
-distance_in_centimeters = distance * 100000
-
-print(f"The distance between the two points is approximately {distance_in_centimeters:.2f} centimeters.")
+# Example usage
+if __name__ == "__main__":
+    lidar = RPLidar('COM4')
+    try:
+        lidar.start_motor()
+        health = lidar.get_health()
+        scans = lidar.read_scan()
+        lidar.stop_motor()
+    finally:
+        lidar.close()

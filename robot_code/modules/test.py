@@ -1,26 +1,16 @@
-from pyrplidar import PyRPlidar
+from rplidar import RPLidar
 
-lidar = PyRPlidar()
-lidar.connect(port="COM4", baudrate=256000, timeout=3)
-# Linux   : "/dev/ttyUSB0"
-# MacOS   : "/dev/cu.SLAB_USBtoUART"
-# Windows : "COM5"
-
-
+lidar = RPLidar('COM4')
 info = lidar.get_info()
-print("info :", info)
+print(info)
 
 health = lidar.get_health()
-print("health :", health)
+print(health)
 
-samplerate = lidar.get_samplerate()
-print("samplerate :", samplerate)
-
-
-scan_modes = lidar.get_scan_modes()
-print("scan modes :")
-for scan_mode in scan_modes:
-    print(scan_mode)
-
-
+for i, scan in enumerate(lidar.iter_scans()):
+    print('%d: Got %d measurments' % (i, len(scan)))
+    if i > 10:
+        break
+lidar.stop()
+lidar.stop_motor()
 lidar.disconnect()
