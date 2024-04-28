@@ -73,12 +73,25 @@ class AutonomousPiCar:
             self.stop()
 
     def get_valid_gps_data(self):
-        """Fetch GPS data, ensuring it meets validity criteria including HDOP or fix quality."""
-        lat, lon, quality = get_current_gps()  # Assuming get_current_gps now also returns 'quality'
-        while lat is None or lon is None or not self.is_valid_gps_data(lat, lon) or quality < 2:
+        """Fetch GPS data, ensuring it meets validity criteria including HDOP or fix quality if available."""
+        data = get_current_gps()  # This may return 2 or 3 values
+        if len(data) == 3:
+            lat, lon, quality = data
+        elif len(data) == 2:
+            lat, lon = data
+            quality = None  # or a default quality value that you determine is acceptable
+
+        while lat is None or lon is None or not self.is_valid_gps_data(lat, lon) or (quality is not None and quality < 2):
             time.sleep(1)  # Wait and retry if the data is not valid
-            lat, lon, quality = get_current_gps()
-        return lat, lon, quality
+            data = get_current_gps()
+            if len(data) == 3:
+                lat, lon, quality = data
+            elif len(data) == 2:
+                lat, lon = data
+                quality = None
+
+        return lat, lon, quality if quality is not None else 2  # Assuming a default quality value of 2 if not provided
+
 
     def is_valid_gps_data(self, lat, lon):
         """Validate GPS data within the standard range for latitude and longitude."""
