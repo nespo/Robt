@@ -30,6 +30,7 @@ class AutonomousPiCar:
         self.total_distance = 0
         self.running = True
         self.lock = threading.Lock()
+        self.stop_event = threading.Event()
         self.initialize_signals()
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
         self.navigate_obstacles_thread = threading.Thread(target=self.navigate_obstacles)
@@ -41,25 +42,17 @@ class AutonomousPiCar:
 
     def signal_handler(self, signum, frame):
         print("Signal interrupt caught, stopping all operations...")
+        self.stop_event.set()
         self.stop()
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        current_lat, current_lon, _ = self.get_valid_gps_data()
-        if current_lat is None:
-            print("No valid GPS data available. Navigation halted.")
-            return
-
-        self.total_distance = self.calculate_total_distance_to_target(current_lat, current_lon)
-        print(f"Initial GPS coordinates: ({current_lat}, {current_lon})")
-        print(f"Total distance to target: {self.total_distance:.2f} meters")
-
-        while self.running:
+        while self.running and not self.stop_event.is_set():
             current_lat, current_lon, _ = self.get_valid_gps_data()
             if current_lat is None:
-                print("Waiting for valid GPS data...")
-                time.sleep(2)
-                continue
+                print("No valid GPS data available. Waiting...")
+                time.sleep(2)  # Sleep and wait for valid data
+                continue  # Skip the rest of the loop if no valid data
 
             print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
             current_heading = get_current_heading()
@@ -94,7 +87,7 @@ class AutonomousPiCar:
             return None  # Recursion to ensure valid data
 
     def navigate_obstacles(self):
-        while self.running:
+        while not self.stop_event.is_set():
             scan_results = []
             for angle in range(-90, 91, 18):
                 status = self.us_sensor.get_status_at(angle)
@@ -166,7 +159,7 @@ class AutonomousPiCar:
         self.running = False
         with self.lock:
             self.robot.stop()
-        self.navigate_obstacles_thread.join()
+        self.navigate_obstacles_thread.join(timeout=5)  # Timeout to avoid blocking forever
         print("Robot completely stopped.")
 
 # Example Usage
