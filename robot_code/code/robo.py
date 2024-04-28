@@ -2,6 +2,7 @@ import math
 import time
 import os
 import sys
+import threading
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -11,12 +12,15 @@ sys.path.append(os.path.abspath(parent_dir))
 from robot_code.code.motor_control import Robot
 from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
+from robot_code.modules.ultrasonic import Ultrasonic  
+from robot_code.modules.pin import Pin
 
 class AutonomousPiCar:
-    def __init__(self, target_lat, target_lon, robot):
+    def __init__(self, target_lat, target_lon, robot, us_sensor):
         self.target_lat = target_lat
         self.target_lon = target_lon
         self.robot = robot
+        self.us_sensor = us_sensor
         self.travel_path = []
         self.Kp = 0.5  # Proportional gain for PID controller
         self.Ki = 0.1  # Integral gain for PID controller
@@ -24,7 +28,12 @@ class AutonomousPiCar:
         self.previous_error = 0
         self.integral = 0
         self.total_distance = 0
+        self.running = True  # Flag to control thread operation
+        self.obstacle_thread = threading.Thread(target=self.navigate_obstacles)
+        self.lock = threading.Lock()  # Lock for thread-safe operations on the robot
+
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
+        self.obstacle_thread.start()
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
@@ -35,7 +44,7 @@ class AutonomousPiCar:
         print(f"Total distance to target: {self.total_distance:.2f} meters")
 
         try:
-            while not self.is_target_reached(previous_lat, previous_lon):
+            while not self.is_target_reached(previous_lat, previous_lon) and self.running:
                 current_lat, current_lon = get_current_gps()
                 self.travel_path.append((current_lat, current_lon))
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
@@ -47,10 +56,13 @@ class AutonomousPiCar:
 
                 self.adjust_heading(current_heading, target_heading)
                 proximity = self.calculate_proximity(current_lat, current_lon)
-                print(f"Proximity to target: {proximity} degrees")
+                print(f"Proximity to target: {proximity:.4f} degrees")
                 motor_power = self.calculate_motor_power(proximity)
                 print(f"Setting motor power to: {motor_power}")
-                self.robot.forward(motor_power)
+                
+                with self.lock:
+                    self.robot.forward(motor_power)
+
                 time.sleep(1)
 
                 self.update_distance(current_lat, current_lon, previous_lat, previous_lon)
@@ -58,6 +70,28 @@ class AutonomousPiCar:
         except KeyboardInterrupt:
             print("KeyboardInterrupt caught. Stopping robot...")
             self.stop()
+
+    def navigate_obstacles(self):
+        while self.running:
+            scan_results = []
+            for angle in range(-90, 91, 18):
+                status = self.us_sensor.get_status_at(angle)
+                scan_results.append(status)
+
+            with self.lock:
+                if all(status == 2 for status in scan_results):
+                    self.robot.forward(70)
+                elif any(status == 0 for status in scan_results):
+                    self.robot.backward(50)
+                    time.sleep(1)
+                    if scan_results.index(0) < len(scan_results) / 2:
+                        self.robot.turn_right(70)
+                    else:
+                        self.robot.turn_left(70)
+                    time.sleep(1)
+                else:
+                    self.robot.forward(50)
+            time.sleep(0.1)
 
     def update_distance(self, current_lat, current_lon, previous_lat, previous_lon):
         distance_traveled = self.calculate_distance((previous_lat, previous_lon), (current_lat, current_lon))
@@ -101,18 +135,6 @@ class AutonomousPiCar:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         distance = radius * c
         return distance
-    
-    '''def adjust_heading(self, current_heading, target_heading):
-        heading_difference = self.calculate_heading_difference(current_heading, target_heading)
-        print(f"Heading difference: {heading_difference} degrees")
-        if abs(heading_difference) > 20:  # More precise turning threshold
-            turn_power = min(50, max(20, abs(heading_difference) * 5))  # Adjust power based on the angle needed
-            print(f"Turning {'right' if heading_difference > 0 else 'left'} with power: {turn_power}")
-            if heading_difference > 0:
-                self.robot.turn_right(turn_power)
-            else:
-                self.robot.turn_left(turn_power)
-            time.sleep(0.5)  # Adjust duration based on your robot's turning speed'''
 
     def calculate_heading_difference(self, current_heading, target_heading):
         difference = target_heading - current_heading
@@ -143,12 +165,15 @@ class AutonomousPiCar:
         return self.calculate_proximity(current_lat, current_lon) < 0.00005
 
     def stop(self):
-        # Command to stop all motors
+        self.running = False
         self.robot.stop()
+        self.obstacle_thread.join()  # Wait for the obstacle thread to finish
         print("Robot stopped.")
 
 # Example Usage
-target_latitude = 62.878800  # Los Angeles latitude 62.880338, 27.635195
-target_longitude = 27.637387  # Los Angeles longitude
-robot = AutonomousPiCar(target_latitude, target_longitude, Robot(config))
-robot.navigate_to_target()
+target_latitude = 62.878800
+target_longitude = 27.637387
+us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))  # Assuming this is the correct way to initialize
+robot = Robot(config)
+autonomous_car = AutonomousPiCar(target_latitude, target_longitude, robot, us_sensor)
+autonomous_car.navigate_to_target()
