@@ -30,6 +30,7 @@ class AutonomousPiCar:
         self.total_distance = 0
         self.running = True
         self.lock = threading.Lock()
+        self.initialize_signals()
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
         self.navigate_obstacles_thread = threading.Thread(target=self.navigate_obstacles)
         self.navigate_obstacles_thread.start()
