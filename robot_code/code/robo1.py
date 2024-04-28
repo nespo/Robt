@@ -3,6 +3,7 @@ import time
 import os
 import sys
 import threading
+import signal
 
 # Adjust library import paths as necessary
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -33,9 +34,15 @@ class AutonomousPiCar:
         self.navigate_obstacles_thread = threading.Thread(target=self.navigate_obstacles)
         self.navigate_obstacles_thread.start()
 
+    def initialize_signals(self):
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+    def signal_handler(self, signum, frame):
+        print("Signal interrupt caught, stopping the robot...")
+        self.stop()
+
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        # Ensure that the first GPS data received is valid before starting navigation
         previous_lat, previous_lon, _ = self.get_valid_gps_data()
         if previous_lat is None:
             print("No valid GPS data available. Navigation halted.")
@@ -46,46 +53,44 @@ class AutonomousPiCar:
         print(f"Total distance to target: {self.total_distance:.2f} meters")
 
         while self.running:
-            try:
-                current_lat, current_lon, _ = self.get_valid_gps_data()
-                if current_lat is None:
-                    print("Waiting for valid GPS data...")
-                    time.sleep(2)
-                    continue
+            current_lat, current_lon, _ = self.get_valid_gps_data()
+            if current_lat is None:
+                print("Waiting for valid GPS data...")
+                time.sleep(2)
+                continue
 
-                print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
-                current_heading = get_current_heading()
-                target_heading = self.calculate_heading_to_target(current_lat, current_lon)
+            print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
+            current_heading = get_current_heading()
+            target_heading = self.calculate_heading_to_target(current_lat, current_lon)
 
-                print(f"Current heading: {current_heading} degrees")
-                print(f"Calculated target heading: {target_heading} degrees")
+            print(f"Current heading: {current_heading} degrees")
+            print(f"Calculated target heading: {target_heading} degrees")
 
-                self.adjust_heading(current_heading, target_heading)
-                proximity = self.calculate_proximity(current_lat, current_lon)
-                motor_power = self.calculate_motor_power(proximity)
-                print(f"Proximity to target: {proximity:.4f} degrees")
-                print(f"Setting motor power to: {motor_power}")
+            self.adjust_heading(current_heading, target_heading)
+            proximity = self.calculate_proximity(current_lat, current_lon)
+            motor_power = self.calculate_motor_power(proximity)
+            print(f"Proximity to target: {proximity:.4f} degrees")
+            print(f"Setting motor power to: {motor_power}")
 
-                with self.lock:
-                    self.robot.forward(motor_power)
+            with self.lock:
+                self.robot.forward(motor_power)
 
-                self.update_distance(current_lat, current_lon, previous_lat, previous_lon)
-                if self.is_target_reached(current_lat, current_lon):
-                    print("Target reached.")
-                    break
-                previous_lat, previous_lon = current_lat, current_lon
-                time.sleep(1)
-            except KeyboardInterrupt:
-                print("KeyboardInterrupt caught. Stopping robot...")
-                self.stop()
+            self.update_distance(current_lat, current_lon, previous_lat, previous_lon)
+            if self.is_target_reached(current_lat, current_lon):
+                print("Target reached.")
                 break
+            previous_lat, previous_lon = current_lat, current_lon
+            time.sleep(1)
 
     def get_valid_gps_data(self):
         while True:
             data = get_current_gps()
             if data and -90 <= data[0] <= 90 and -180 <= data[1] <= 180:
                 return data[0], data[1], data[2] if len(data) > 2 else 1
-            time.sleep(1)
+            else:
+                print("Invalid or no GPS data received.")
+                time.sleep(1)  # Retry interval
+                continue  # Ensures it retries until valid data is obtained
 
     def navigate_obstacles(self):
         while self.running:
