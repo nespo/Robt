@@ -181,14 +181,10 @@ def dynamic_navigation(nav_system, robot):
 def main():
     nav_system = NavigationSystem()
     robot = Robot(config)
-    nav_system.running = True
-    position_thread = threading.Thread(target=nav_system.dynamic_update_position)
-    position_thread.start()
 
     dynamic_navigation(nav_system, robot)
 
-    nav_system.running = False
-    position_thread.join()
+
 
 if __name__ == "__main__":
     main()
