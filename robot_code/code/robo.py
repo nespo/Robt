@@ -36,15 +36,15 @@ class AutonomousPiCar:
         self.obstacle_thread.start()
 
     def navigate_to_target(self):
-        print("Starting navigation to target...")
-        previous_lat, previous_lon, previous_quality = self.get_valid_gps_data()
-
-        self.travel_path.append((previous_lat, previous_lon))
-        print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
-        self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
-        print(f"Total distance to target: {self.total_distance:.2f} meters")
-
         try:
+            print("Starting navigation to target...")
+            previous_lat, previous_lon = self.get_valid_gps_data()
+
+            self.travel_path.append((previous_lat, previous_lon))
+            print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
+            self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
+            print(f"Total distance to target: {self.total_distance:.2f} meters")
+
             while not self.is_target_reached(previous_lat, previous_lon) and self.running:
                 current_lat, current_lon, _ = self.get_valid_gps_data()
                 self.travel_path.append((current_lat, current_lon))
@@ -191,9 +191,11 @@ class AutonomousPiCar:
         return self.calculate_proximity(current_lat, current_lon) < 0.00005
 
     def stop(self):
+        """Stops the robot and all threads, ensuring a clean shutdown."""
         self.running = False
-        self.robot.stop()
-        self.obstacle_thread.join()  # Wait for the obstacle thread to finish
+        with self.lock:
+            self.robot.stop()
+        self.obstacle_thread.join()  # Ensure the obstacle thread has completed
         print("Robot stopped.")
 
 # Example Usage
