@@ -37,7 +37,7 @@ class AutonomousPiCar:
 
     def initialize_signals(self):
         signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle SIGTERM as well
+        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command as well.
 
     def signal_handler(self, signum, frame):
         print("Signal interrupt caught, stopping all operations...")
@@ -91,7 +91,7 @@ class AutonomousPiCar:
         else:
             print("Invalid or no GPS data received. Retrying...")
             time.sleep(1)  # Retry interval
-            return self.get_valid_gps_data()  # Recursion to ensure valid data
+            return None  # Recursion to ensure valid data
 
     def navigate_obstacles(self):
         while self.running:
