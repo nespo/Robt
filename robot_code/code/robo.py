@@ -13,35 +13,42 @@ from robot_code.code.motor_control import Robot
 from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
 
-
 class AutonomousPiCar:
     def __init__(self, target_lat, target_lon, robot):
         self.target_lat = target_lat
         self.target_lon = target_lon
         self.robot = robot
+        print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
 
     def navigate_to_target(self):
+        print("Starting navigation to target...")
         while not self.is_target_reached():
             current_lat, current_lon = get_current_gps()
+            print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
             if self.is_target_reached(current_lat, current_lon):
                 print("Target reached!")
                 self.stop()  # Ensure the robot stops when it reaches the destination
                 break
 
             current_heading = get_current_heading()
+            print(f"Current heading: {current_heading} degrees")
             target_heading = self.calculate_heading_to_target(current_lat, current_lon)
+            print(f"Calculated target heading: {target_heading} degrees")
 
             self.adjust_heading(current_heading, target_heading)
-            # Use a lower power setting for more precise movements as you get closer to the target
             proximity = self.calculate_proximity(current_lat, current_lon)
+            print(f"Proximity to target: {proximity} degrees")
             motor_power = max(20, 50 - int(proximity * 1000))  # Decrease power as we get closer
+            print(f"Setting motor power to: {motor_power}")
             self.robot.forward(motor_power)
             time.sleep(1)  # Short pause to allow for real-time updates
 
     def adjust_heading(self, current_heading, target_heading):
         heading_difference = self.calculate_heading_difference(current_heading, target_heading)
+        print(f"Heading difference: {heading_difference} degrees")
         if abs(heading_difference) > 20:  # More precise turning threshold
             turn_power = min(50, max(20, abs(heading_difference) * 5))  # Adjust power based on the angle needed
+            print(f"Turning {'right' if heading_difference > 0 else 'left'} with power: {turn_power}")
             if heading_difference > 0:
                 self.robot.turn_right(turn_power)
             else:
@@ -79,6 +86,7 @@ class AutonomousPiCar:
     def stop(self):
         # Command to stop all motors
         self.robot.stop(0)
+        print("Robot stopped.")
 
 # Example Usage
 target_latitude = 62.880338  # Los Angeles latitude 62.880338, 27.635195
