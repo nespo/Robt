@@ -35,14 +35,24 @@ class AutonomousPiCar:
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        previous_lat, previous_lon, _ = self.get_valid_gps_data()  # Ensures valid start data
+        # Ensure that the first GPS data received is valid before starting navigation
+        previous_lat, previous_lon, _ = self.get_valid_gps_data()
+        if previous_lat is None:
+            print("No valid GPS data available. Navigation halted.")
+            return
+
         self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
         print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
         print(f"Total distance to target: {self.total_distance:.2f} meters")
 
-        try:
-            while self.running:
+        while self.running:
+            try:
                 current_lat, current_lon, _ = self.get_valid_gps_data()
+                if current_lat is None:
+                    print("Waiting for valid GPS data...")
+                    time.sleep(2)
+                    continue
+
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
                 current_heading = get_current_heading()
                 target_heading = self.calculate_heading_to_target(current_lat, current_lon)
@@ -65,9 +75,10 @@ class AutonomousPiCar:
                     break
                 previous_lat, previous_lon = current_lat, current_lon
                 time.sleep(1)
-        except KeyboardInterrupt:
-            print("KeyboardInterrupt caught. Stopping robot...")
-            self.stop()
+            except KeyboardInterrupt:
+                print("KeyboardInterrupt caught. Stopping robot...")
+                self.stop()
+                break
 
     def get_valid_gps_data(self):
         while True:
