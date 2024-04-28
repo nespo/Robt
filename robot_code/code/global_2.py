@@ -79,7 +79,7 @@ class NavigationSystem:
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
                     heapq.heappush(oheap, (fscore[neighbor], neighbor))
-                    print(f"New path considered to: {neighbor} with total cost: {fscore[neighbor]}")
+                    #print(f"New path considered to: {neighbor} with total cost: {fscore[neighbor]}")
         print("No path found.")
         return False
 
@@ -114,6 +114,10 @@ def wait_until_turn_complete(robot, target_heading, tolerance=5):
     current_heading = get_current_heading()
     while abs(current_heading - target_heading) > tolerance:
         error = target_heading - current_heading
+        if error > 180:
+            error -= 360
+        elif error < -180:
+            error += 360
         integral += error * 0.1
         derivative = (error - previous_error) / 0.1
         power = Kp * error + Ki * integral + Kd * derivative
@@ -128,6 +132,7 @@ def wait_until_turn_complete(robot, target_heading, tolerance=5):
         previous_error = error
     robot.stop()
     print("Turn complete. Current heading:", current_heading)
+
 
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
     print("Dynamic navigation started.")
@@ -191,17 +196,17 @@ def plot_environment(nav_system, goal_utm):
         ax.legend()
 
         def update(frame):
-            try:
-                current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
-                scat_start.set_offsets([current_grid])
-                print(f"Updating plot with current position: {current_grid}")
-                fig.canvas.draw_idle()
-            except Exception as e:
-                ax.set_title(f"Error: {str(e)}", color='red')
-                print(f"Error during plot update: {e}")
+            current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
+            scat_start.set_offsets([current_grid])
+            print(f"Updating plot with current position: {current_grid}")
+            fig.canvas.draw_idle()
 
         ani = FuncAnimation(fig, update, interval=1000)
         plt.show()
+
+    else:
+        print("No path or plot to display.")
+
 
 def main():
     nav_system = NavigationSystem()
