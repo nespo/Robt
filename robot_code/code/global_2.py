@@ -34,9 +34,9 @@ class NavigationSystem:
         try:
             self.current_utm = self.gps_to_utm(lat, lon)
             self.grid_origin = (self.current_utm[0] - 500, self.current_utm[1] - 500)
-            print(f"GPS coordinates received: Latitude = {lat}, Longitude = {lon}")
-            print(f"Converted to UTM coordinates: Easting = {self.current_utm[0]}, Northing = {self.current_utm[1]}")
-            print("Updated current position to:", self.current_utm)
+            #print(f"GPS coordinates received: Latitude = {lat}, Longitude = {lon}")
+            #print(f"Converted to UTM coordinates: Easting = {self.current_utm[0]}, Northing = {self.current_utm[1]}")
+            #print("Updated current position to:", self.current_utm)
         except Exception as e:
             raise RuntimeError(f"Invalid UTM conversion: {e}")
 
