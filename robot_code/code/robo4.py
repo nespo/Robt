@@ -41,6 +41,21 @@ class KalmanFilter:
         self.last_estimate = self.current_estimate
         return self.current_estimate
 
+def retry(attempts):
+    def retry_decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for _ in range(attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    time.sleep(2)
+            raise last_exception
+        return wrapper
+    return retry_decorator
+
 class AutonomousPiCar:
     def __init__(self, target_lat, target_lon, robot, us_sensor):
         self.target_lat = target_lat
@@ -66,21 +81,6 @@ class AutonomousPiCar:
             self.navigate_obstacles_thread.start()
             self.navigation_thread = threading.Thread(target=self.navigate_to_target)
             self.navigation_thread.start()
-
-    def retry(attempts):
-        def retry_decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                last_exception = None
-                for _ in range(attempts):
-                    try:
-                        return func(*args, **kwargs)
-                    except Exception as e:
-                        last_exception = e
-                        time.sleep(2)
-                raise last_exception
-            return wrapper
-        return retry_decorator
 
     @retry(attempts=100)
     def initialize_gps_data(self):
@@ -234,12 +234,11 @@ def setup_signal_handlers(car):
     def handle_signal(signum, frame):
         logging.info(f"Signal {signum} received, stopping car...")
         car.stop()
-
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
-# Example Usage
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     target_latitude = 62.878800
     target_longitude = 27.637387
     us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
