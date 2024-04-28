@@ -27,7 +27,6 @@ class AutonomousPiCar:
         self.Kd = 0.05
         self.previous_error = 0
         self.integral = 0
-        self.total_distance = 0
         self.running = True
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -38,22 +37,22 @@ class AutonomousPiCar:
 
     def initialize_signals(self):
         signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle kill command as well.
+        signal.signal(signal.SIGTERM, self.signal_handler)
 
     def signal_handler(self, signum, frame):
         print("Signal interrupt caught, stopping all operations...")
         self.stop_event.set()
+        self.running = False
         self.stop()
 
     def navigate_to_target(self):
-        print("Starting navigation to target...")
-        while self.running and not self.stop_event.is_set():
-            current_lat, current_lon, _ = self.get_valid_gps_data()
-            if current_lat is None:
+        while not self.stop_event.is_set():
+            if not self.get_valid_gps_data():
                 print("No valid GPS data available. Waiting...")
-                time.sleep(2)  # Sleep and wait for valid data
-                continue  # Skip the rest of the loop if no valid data
+                time.sleep(2)
+                continue
 
+            current_lat, current_lon, _ = self.get_valid_gps_data()
             print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
             current_heading = get_current_heading()
             target_heading = self.calculate_heading_to_target(current_lat, current_lon)
@@ -80,11 +79,9 @@ class AutonomousPiCar:
     def get_valid_gps_data(self):
         data = get_current_gps()
         if data and -90 <= data[0] <= 90 and -180 <= data[1] <= 180:
-            return data[0], data[1], data[2] if len(data) > 2 else 1
+            return data
         else:
-            print("Invalid or no GPS data received. Retrying...")
-            time.sleep(1)  # Retry interval
-            return None  # Recursion to ensure valid data
+            return None
 
     def navigate_obstacles(self):
         while not self.stop_event.is_set():
@@ -93,19 +90,18 @@ class AutonomousPiCar:
                 status = self.us_sensor.get_status_at(angle)
                 scan_results.append(status)
 
-            with self.lock:
-                if all(status == 2 for status in scan_results):
-                    self.robot.forward(70)
-                elif any(status == 0 for status in scan_results):
-                    self.robot.backward(50)
-                    time.sleep(1)
-                    if scan_results.index(0) < len(scan_results) / 2:
-                        self.robot.turn_right(70)
-                    else:
-                        self.robot.turn_left(70)
-                    time.sleep(1)
+            if all(status == 2 for status in scan_results):
+                self.robot.forward(70)
+            elif any(status == 0 for status in scan_results):
+                self.robot.backward(50)
+                time.sleep(1)
+                if scan_results.index(0) < len(scan_results) / 2:
+                    self.robot.turn_right(70)
                 else:
-                    self.robot.forward(50)
+                    self.robot.turn_left(70)
+                time.sleep(1)
+            else:
+                self.robot.forward(50)
             time.sleep(0.1)
 
     def update_distance(self, current_lat, current_lon, previous_lat, previous_lon):
@@ -156,10 +152,10 @@ class AutonomousPiCar:
         return self.calculate_proximity(current_lat, current_lon) < 0.0001  # Adjust threshold as needed
 
     def stop(self):
-        self.running = False
         with self.lock:
             self.robot.stop()
-        self.navigate_obstacles_thread.join(timeout=5)  # Timeout to avoid blocking forever
+        if self.navigate_obstacles_thread.is_alive():
+            self.navigate_obstacles_thread.join(timeout=5)  # Timeout to avoid blocking forever
         print("Robot completely stopped.")
 
 # Example Usage
