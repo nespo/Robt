@@ -40,7 +40,7 @@ class AutonomousPiCar:
 
     def adjust_heading(self, current_heading, target_heading):
         heading_difference = self.calculate_heading_difference(current_heading, target_heading)
-        if abs(heading_difference) > 2:  # More precise turning threshold
+        if abs(heading_difference) > 20:  # More precise turning threshold
             turn_power = min(50, max(20, abs(heading_difference) * 5))  # Adjust power based on the angle needed
             if heading_difference > 0:
                 self.robot.turn_right(turn_power)
