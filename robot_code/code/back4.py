@@ -93,33 +93,38 @@ class NavigationSystem:
         path.append(current)
         return path[::-1]
 
-    def dynamic_update_position(self):
-        while self.running:
-            lat, lon = get_current_gps()
-            self.update_current_position(lat, lon)
-            time.sleep(1)
 
-def wait_until_turn_complete(robot, target_heading, tolerance=5):
-    """
-    Blocks execution until the robot's heading is within a certain tolerance of the target heading.
-    `tolerance` is the acceptable error in degrees.
-    """
+class PIDController:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.previous_error = 0
+        self.integral = 0
+
+    def update(self, error, delta_time):
+        self.integral += error * delta_time
+        derivative = (error - self.previous_error) / delta_time
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        self.previous_error = error
+        return output
+
+def wait_until_turn_complete(robot, target_heading, tolerance=20):
+    pid = PIDController(kp=0.5, ki=0.1, kd=0.05)
     current_heading = get_current_heading()
     while abs(current_heading - target_heading) > tolerance:
         error = target_heading - current_heading
-        power = max(10, min(100, abs(int(error * 0.5))))  # Proportional control factor
-
+        power = max(10, min(100, abs(pid.update(error, 0.1))))
         if error < 0:
             robot.turn_left(power)
-        elif error > 0:
+        else:
             robot.turn_right(power)
-
-        time.sleep(0.1)  # Check every 100 milliseconds
+        time.sleep(0.1)
         current_heading = get_current_heading()
         print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
-
     print("Turn complete. Current heading:", current_heading)
-    robot.stop()  # Stop turning once the heading is achieved
+    robot.stop()
+
 
 def calculate_bearing(pointA, pointB):
     lat1, lon1 = map(math.radians, pointA)
@@ -171,32 +176,7 @@ def dynamic_navigation(nav_system, robot):
         print(f"Error during navigation: {e}")
         robot.stop()
 
-def plot_environment(nav_system, goal_utm):
-    fig, ax = plt.subplots()
-    ax.set_xlim(0, nav_system.grid_size)
-    ax.set_ylim(0, nav_system.grid_size)
-    start_grid = nav_system.utm_to_grid(*nav_system.current_utm)
-    goal_grid = nav_system.utm_to_grid(*goal_utm)
 
-    # Initial path plot
-    path = nav_system.a_star_search(start_grid, goal_grid)
-    if path:
-        path_x, path_y = zip(*path)
-        ax.plot(path_x, path_y, '-o', color='blue', label='Path')
-        ax.scatter(*start_grid, color='green', marker='o', s=100, label='Start')
-        ax.scatter(*goal_grid, color='red', marker='x', s=100, label='Goal')
-        ax.legend()
-
-        # Update robot's current position on the plot
-        def update_plot(frame):
-            current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
-            ax.scatter(*current_grid, color='blue', s=50, label='Current Position')
-            return ax,
-
-        ani = FuncAnimation(fig, update_plot, frames=100, interval=1000, blit=False)
-        plt.show()
-    else:
-        print("No path or plot to display.")
 
 def main():
     nav_system = NavigationSystem()
@@ -206,7 +186,6 @@ def main():
     position_thread.start()
 
     dynamic_navigation(nav_system, robot)
-    plot_environment(nav_system, nav_system.gps_to_utm(62.880338, 27.635195))
 
     nav_system.running = False
     position_thread.join()
