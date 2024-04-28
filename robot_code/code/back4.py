@@ -30,12 +30,17 @@ class NavigationSystem:
 
     def update_current_position(self, lat, lon):
         if lat is None or lon is None:
-            raise ValueError("GPS signal lost")
+            print("Error: GPS signal lost")
+            return False
         try:
             self.current_utm = self.gps_to_utm(lat, lon)
             self.grid_origin = (self.current_utm[0] - 500, self.current_utm[1] - 500)
+            print(f"GPS Data Retrieved: Latitude = {lat}, Longitude = {lon}")
+            return True
         except Exception as e:
-            raise RuntimeError(f"Invalid UTM conversion: {e}")
+            print(f"Error in UTM conversion: {e}")
+            return False
+
 
     def gps_to_utm(self, lat, lon):
         utm_conversion = utm.from_latlon(lat, lon)
@@ -47,34 +52,36 @@ class NavigationSystem:
         return grid_x, grid_y
 
     def a_star_search(self, start, goal):
-        print("Starting A* search from", start, "to", goal)
-        neighbors = [(0,1), (1,0), (0,-1), (-1,0), (1,1), (-1,-1), (1,-1), (-1,1)]
+        print(f"Starting A* search from {start} to {goal}")
         close_set = set()
         came_from = {}
         gscore = {start: 0}
         fscore = {start: self.heuristic(start, goal)}
         oheap = []
+
         heapq.heappush(oheap, (fscore[start], start))
 
         while oheap:
             current = heapq.heappop(oheap)[1]
             if current == goal:
                 path = self.reconstruct_path(came_from, current)
-                print("Path found!")
+                print("Path found!: {path}")
                 return path
+
             close_set.add(current)
-            for i, j in neighbors:
+            for i, j in self.neighbors:
                 neighbor = current[0] + i, current[1] + j
-                if not self.is_valid_position(neighbor, close_set):
-                    continue
-                tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
-                if tentative_g_score < gscore.get(neighbor, float('inf')):
-                    came_from[neighbor] = current
-                    gscore[neighbor] = tentative_g_score
-                    fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
-                    heapq.heappush(oheap, (fscore[neighbor], neighbor))
+                if 0 <= neighbor[0] < self.grid_size and 0 <= neighbor[1] < self.grid_size and neighbor not in close_set:
+                    tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
+                    if tentative_g_score < gscore.get(neighbor, float('inf')):
+                        came_from[neighbor] = current
+                        gscore[neighbor] = tentative_g_score
+                        fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
+                        heapq.heappush(oheap, (fscore[neighbor], neighbor))
+
         print("No path found.")
         return None
+
 
     def is_valid_position(self, pos, close_set):
         x, y = pos
@@ -137,43 +144,41 @@ def wait_until_turn_complete(robot, target_heading, tolerance=20):
     print("Turn complete. Current heading:", current_heading)
     robot.stop()
 
+
 def dynamic_navigation(nav_system, robot):
     try:
-        tolerance = 20
         start_lat, start_lon = get_current_gps()
-        goal_lat, goal_lon = 62.880338, 27.635195  # Example static goal
-        nav_system.update_current_position(start_lat, start_lon)
-        start_utm = nav_system.current_utm
-        goal_utm = nav_system.gps_to_utm(goal_lat, goal_lon)
-        start_grid = nav_system.utm_to_grid(*start_utm)
-        goal_grid = nav_system.utm_to_grid(*goal_utm)
-        path = nav_system.a_star_search(start_grid, goal_grid)
-        if not path:
-            print("No global path could be planned.")
-            robot.stop()
-            return
-
-        path_in_utm = [(nav_system.grid_origin[0] + x * nav_system.grid_resolution, nav_system.grid_origin[1] + y * nav_system.grid_resolution) for x, y in path]
-        for i in range(len(path_in_utm) - 1):
-            current_position = path_in_utm[i]
-            next_position = path_in_utm[i+1]
-            current_heading = get_current_heading()
-            required_bearing = calculate_bearing(current_position, next_position)
-            required_turn = required_bearing - current_heading
-            target_heading = (current_heading + required_turn) % 360
-
-            if abs(required_turn) > tolerance:  # Check if the turn is needed based on tolerance
-                robot.turn_right(max(0, min(100, abs(required_turn))))  # Turning towards the new heading
-                wait_until_turn_complete(robot, target_heading, tolerance)  # Wait for turn to complete within the specified tolerance
-
-            speed = min(50, 100)  # Define a mechanism to determine speed if necessary
-            robot.forward(speed)  # Continue moving forward after the turn is confirmed within tolerance
-            print(f"Moving forward at speed: {speed}")
-
-        print("Navigation complete.")
+        goal_lat, goal_lon = 62.880338, 27.635195
+        if nav_system.update_current_position(start_lat, start_lon):
+            start_utm = nav_system.current_utm
+            goal_utm = nav_system.gps_to_utm(goal_lat, goal_lon)
+            start_grid = nav_system.utm_to_grid(*start_utm)
+            goal_grid = nav_system.utm_to_grid(*goal_utm)
+            path = nav_system.a_star_search(start_grid, goal_grid)
+            if path:
+                follow_path(nav_system, robot, path)
+            else:
+                print("No global path could be planned.")
+                robot.stop()
     except Exception as e:
         print(f"Error during navigation: {e}")
         robot.stop()
+
+def follow_path(nav_system, robot, path):
+    path_in_utm = [(nav_system.grid_origin[0] + x * nav_system.grid_resolution, nav_system.grid_origin[1] + y * nav_system.grid_resolution) for x, y in path]
+    for i in range(len(path_in_utm) - 1):
+        current_position = path_in_utm[i]
+        next_position = path_in_utm[i+1]
+        current_heading = get_current_heading()
+        required_bearing = calculate_bearing(current_position, next_position)
+        required_turn = required_bearing - current_heading
+        target_heading = (current_heading + required_turn) % 360
+
+        if abs(required_turn) > 20:  # Check if the turn is needed based on tolerance
+            wait_until_turn_complete(robot, target_heading, 20)  # Wait for turn to complete within the specified tolerance
+
+        robot.forward(50)  # Define speed based on operational conditions
+        print(f"Moving from {current_position} to {next_position} at speed 50")
 
 def main():
     nav_system = NavigationSystem()
