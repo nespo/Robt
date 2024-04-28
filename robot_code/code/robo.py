@@ -22,7 +22,9 @@ class AutonomousPiCar:
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        while not self.is_target_reached():
+        current_lat, current_lon = get_current_gps()  # Obtain initial GPS coordinates
+        print(f"Initial GPS coordinates: ({current_lat}, {current_lon})")
+        while not self.is_target_reached(current_lat, current_lon):  # Now pass the required arguments
             current_lat, current_lon = get_current_gps()
             print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
             if self.is_target_reached(current_lat, current_lon):
@@ -42,6 +44,7 @@ class AutonomousPiCar:
             print(f"Setting motor power to: {motor_power}")
             self.robot.forward(motor_power)
             time.sleep(1)  # Short pause to allow for real-time updates
+
 
     def adjust_heading(self, current_heading, target_heading):
         heading_difference = self.calculate_heading_difference(current_heading, target_heading)
