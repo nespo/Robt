@@ -102,7 +102,7 @@ class NavigationSystem:
 
 def ultrasonic_data():
     sensor_data = ultrasonic.full_scan()
-    print(f"Ultrasonic sensor data: {sensor_data}")
+    print(sensor_data)
     return sensor_data
 
 # VFH+ algorithm class
@@ -130,7 +130,7 @@ class VFHPlus:
             return None
         best_sector = min(navigable, key=lambda x: abs(x - len(histogram)//2))
         best_angle = best_sector * self.sector_angle
-        print("Best direction found from histogram:", best_angle)
+        print("Best direction found:", best_angle)
         return best_angle
 
 def wait_until_turn_complete(robot, target_heading, tolerance=5):
@@ -203,13 +203,12 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
             # Move forward after the turn is complete
             robot.forward(min(50, 100))  # Example forward power
         else:
-            print("No direction found, stopping robot.")
-            robot.stop()
+            print("No navigable direction found, recalculating path...")
+            dynamic_navigation(nav_system, get_current_gps()[0], get_current_gps()[1], goal_lat, goal_lon, robot)
             break
 
-# Initial setup
+
 nav_system = NavigationSystem()
 start_lat, start_lon = get_current_gps()
 robot = Robot(config)
 dynamic_navigation(nav_system, start_lat, start_lon, 62.880338, 27.635195, robot)
-
