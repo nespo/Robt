@@ -105,34 +105,28 @@ class NavigationSystem:
             self.update_current_position(lat, lon)
             time.sleep(1)  # Update every second
 
+
 def wait_until_turn_complete(robot, target_heading, tolerance=5):
-    Kp = 0.5
-    Ki = 0.1
-    Kd = 0.05
-    previous_error = 0
-    integral = 0
+    """
+    Blocks execution until the robot's heading is within a certain tolerance of the target heading.
+    `tolerance` is the acceptable error in degrees.
+    """
     current_heading = get_current_heading()
     while abs(current_heading - target_heading) > tolerance:
         error = target_heading - current_heading
-        if error > 180:
-            error -= 360
-        elif error < -180:
-            error += 360
-        integral += error * 0.1
-        derivative = (error - previous_error) / 0.1
-        power = Kp * error + Ki * integral + Kd * derivative
-        power = max(10, min(100, abs(int(power))))
+        power = max(10, min(100, abs(int(error * 0.5))))  # Proportional control factor
+
         if error < 0:
             robot.turn_left(power)
-        else:
+        elif error > 0:
             robot.turn_right(power)
-        print(f"Adjusting heading: Current = {current_heading}, Target = {target_heading}, Error = {error}")
-        time.sleep(0.1)
-        current_heading = get_current_heading()
-        previous_error = error
-    robot.stop()
-    print("Turn complete. Current heading:", current_heading)
 
+        time.sleep(0.1)  # Check every 100 milliseconds
+        current_heading = get_current_heading()
+        print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
+
+    print("Turn complete. Current heading:", current_heading)
+    robot.stop()  # Stop turning once the heading is achieved
 
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
     print("Dynamic navigation started.")
@@ -143,6 +137,7 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
     goal_grid = nav_system.utm_to_grid(*goal_utm)
     print(f"New A* search called from grid position: {start_grid} to {goal_grid}")
     global_path = nav_system.a_star_search(start_grid, goal_grid, nav_system.grid)
+    plot_environment(nav_system, goal_utm) 
     if not global_path:
         print("No global path could be planned.")
         robot.stop()
@@ -186,25 +181,33 @@ def plot_environment(nav_system, goal_utm):
     ax.set_ylim(0, nav_system.grid_size)
     start_grid = nav_system.utm_to_grid(*nav_system.current_utm)
     goal_grid = nav_system.utm_to_grid(*goal_utm)
+
+    # Calculate and plot the initial path using A* search
     path = nav_system.a_star_search(start_grid, goal_grid, nav_system.grid)
-    
     if path:
         path_x, path_y = zip(*path)
-        scat_path = ax.scatter(path_x, path_y, c='blue', label='Path')
-        scat_start = ax.scatter(start_grid[0], start_grid[1], c='green', marker='o', label='Start')
-        scat_goal = ax.scatter(goal_grid[0], goal_grid[1], c='red', marker='x', label='Goal')
+        ax.plot(path_x, path_y, '-o', color='blue', label='Path')  # Plot the path as a line with markers
+        scat_start = ax.scatter(*start_grid, color='green', marker='o', s=100, label='Start')  # Start point
+        scat_goal = ax.scatter(*goal_grid, color='red', marker='x', s=100, label='Goal')  # Goal point
         ax.legend()
 
-        def update(frame):
-            current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
-            scat_start.set_offsets([current_grid])
-            print(f"Updating plot with current position: {current_grid}")
-            fig.canvas.draw_idle()
+        # Real-time position marker, initialized at start position
+        scat_current_pos, = ax.plot(*start_grid, 'bo', ms=10, label='Current Position')
 
-        ani = FuncAnimation(fig, update, interval=1000)
+        def update(frame):
+            # Update the current position from the navigation system
+            current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
+            scat_current_pos.set_data(current_grid[0], current_grid[1])
+            print(f"Updating plot with current position: {current_grid}")
+            return scat_current_pos,
+
+        # Create an animation that updates the robot's position dynamically
+        ani = FuncAnimation(fig, update, blit=True, interval=1000)
+
         plt.show()
 
     else:
+        print("No path or plot to display.")
         print("No path or plot to display.")
 
 
