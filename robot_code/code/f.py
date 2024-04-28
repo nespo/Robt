@@ -56,7 +56,7 @@ class RPLidar:
 
 # Example usage
 if __name__ == "__main__":
-    lidar = RPLidar('COM4')
+    lidar = RPLidar('/dev/ttyUSB0')
     try:
         lidar.start_motor()
         health = lidar.get_health()

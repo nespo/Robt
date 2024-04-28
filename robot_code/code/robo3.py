@@ -3,7 +3,12 @@ import time
 import sys
 import threading
 import signal
-import os 
+import os
+import logging
+from functools import wraps
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -30,9 +35,8 @@ class AutonomousPiCar:
         self.running = True
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
-        self.initialize_signals()
-        print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
-        
+        logging.info(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
+
         # Initial GPS data retrieval
         self.initialize_gps_data()
 
@@ -42,36 +46,35 @@ class AutonomousPiCar:
             self.navigation_thread = threading.Thread(target=self.navigate_to_target)
             self.navigation_thread.start()
 
+    def retry(attempts):
+        def retry_decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                last_exception = None
+                for _ in range(attempts):
+                    try:
+                        return func(*args, **kwargs)
+                    except Exception as e:
+                        last_exception = e
+                        time.sleep(2)
+                raise last_exception
+            return wrapper
+        return retry_decorator
+
+    @retry(attempts=100)
     def initialize_gps_data(self):
-        max_attempts = 100
-        attempt = 0
-        while attempt < max_attempts:
-            initial_data = self.get_valid_gps_data()
-            if initial_data:
-                self.previous_lat, self.previous_lon, _ = initial_data
-                print(f"Initial GPS coordinates set: ({self.previous_lat}, {self.previous_lon})")
-                return
-            else:
-                attempt += 1
-                print(f"Attempt {attempt} failed to get valid GPS data. Retrying...")
-                time.sleep(2)
-
-        self.running = False
-        print("Failed to get initial GPS data after multiple attempts.")
-
-    def initialize_signals(self):
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
-
-    def signal_handler(self, signum, frame):
-        print("Signal interrupt caught, stopping all operations...")
-        self.stop()
+        initial_data = self.get_valid_gps_data()
+        if initial_data:
+            self.previous_lat, self.previous_lon, _ = initial_data
+            logging.info(f"Initial GPS coordinates set: ({self.previous_lat}, {self.previous_lon})")
+            return
+        raise RuntimeError("Failed to get initial GPS data after multiple attempts.")
 
     def navigate_to_target(self):
-        while self.running and not self.stop_event.is_set():
+        while not self.stop_event.is_set():
             gps_data = self.get_valid_gps_data()
             if gps_data is None:
-                print("No valid GPS data available. Waiting...")
+                logging.info("No valid GPS data available. Waiting...")
                 time.sleep(2)
                 continue
 
@@ -83,41 +86,41 @@ class AutonomousPiCar:
         if data and -90 <= data[0] <= 90 and -180 <= data[1] <= 180:
             return data
         else:
-            print("Invalid or no GPS data received.")
+            logging.warning("Invalid or no GPS data received.")
             return None
 
     def perform_navigation(self, current_lat, current_lon):
         try:
-            print("Starting navigation to target...")
+            logging.info("Starting navigation to target...")
             self.total_distance = self.calculate_distance((self.previous_lat, self.previous_lon), (self.target_lat, self.target_lon))
-            print(f"Initial GPS coordinates: ({self.previous_lat}, {self.previous_lon})")
-            print(f"Total distance to target: {self.total_distance:.2f} meters")
+            logging.info(f"Initial GPS coordinates: ({self.previous_lat}, {self.previous_lon})")
+            logging.info(f"Total distance to target: {self.total_distance:.2f} meters")
 
-            while self.running and not self.stop_event.is_set():
-                print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
+            while not self.stop_event.is_set():
+                logging.info(f"Current GPS coordinates: ({current_lat}, {current_lon})")
                 current_heading = get_current_heading()
                 target_heading = self.calculate_heading_difference(current_lat, current_lon)
 
-                print(f"Current heading: {current_heading} degrees")
-                print(f"Calculated target heading: {target_heading} degrees")
+                logging.info(f"Current heading: {current_heading} degrees")
+                logging.info(f"Calculated target heading: {target_heading} degrees")
 
                 self.adjust_heading(current_heading, target_heading)
                 proximity = self.calculate_proximity(current_lat, current_lon)
                 motor_power = self.calculate_motor_power(proximity)
-                print(f"Proximity to target: {proximity:.4f} degrees")
-                print(f"Setting motor power to: {motor_power}")
+                logging.info(f"Proximity to target: {proximity:.4f} degrees")
+                logging.info(f"Setting motor power to: {motor_power}")
 
                 with self.lock:
                     self.robot.forward(motor_power)
 
                 self.update_distance(current_lat, current_lon, self.previous_lat, self.previous_lon)
                 if self.is_target_reached(current_lat, current_lon):
-                    print("Target reached.")
+                    logging.info("Target reached.")
                     break
                 self.previous_lat, self.previous_lon = current_lat, current_lon
                 time.sleep(1)
         except Exception as e:
-            print(f"An error occurred during navigation: {e}")
+            logging.error(f"An error occurred during navigation: {e}")
 
     def navigate_obstacles(self):
         try:
@@ -146,19 +149,17 @@ class AutonomousPiCar:
                         self.robot.forward(50)
                 time.sleep(0.1)
         except Exception as e:
-            print(f"An error occurred while navigating obstacles: {e}")
+            logging.error(f"An error occurred while navigating obstacles: {e}")
 
     def calculate_proximity(self, current_lat, current_lon):
-        # Calculate the Euclidean distance to the target for power adjustment
-        return math.hypot(current_lat-self.target_lat, current_lon-self.target_lon)
-    
+        return math.hypot(current_lat - self.target_lat, current_lon - self.target_lon)
+
     def update_distance(self, current_lat, current_lon, previous_lat, previous_lon):
         distance_traveled = self.calculate_distance((previous_lat, previous_lon), (current_lat, current_lon))
         self.total_distance = max(0, self.total_distance - distance_traveled)
-        print(f"Traveled {distance_traveled:.2f} m, Remaining distance to target: {self.total_distance:.2f} m")
+        logging.info(f"Traveled {distance_traveled:.2f} m, Remaining distance to target: {self.total_distance:.2f} m")
 
     def calculate_motor_power(self, proximity):
-        # Adjust motor power based on proximity to target
         return max(20, 50 - int(proximity * 1000))
 
     def adjust_heading(self, current_heading, target_heading):
@@ -166,8 +167,8 @@ class AutonomousPiCar:
         turn_power = int(self.Kp * error + self.Ki * self.integral + self.Kd * (error - self.previous_error))
         self.previous_error = error
         self.integral += error
-        turn_power = max(-50, min(turn_power, 50))  # Clamp to [-50, 50]
-        print(f"Adjusting heading by {turn_power} degrees")
+        turn_power = max(-50, min(turn_power, 50))
+        logging.info(f"Adjusting heading by {turn_power} degrees")
         with self.lock:
             if turn_power > 0:
                 self.robot.turn_right(abs(turn_power))
@@ -176,18 +177,16 @@ class AutonomousPiCar:
         time.sleep(0.5)
 
     def calculate_distance(self, point1, point2):
-        # Haversine formula to calculate distance
         lat1, lon1 = point1
         lat2, lon2 = point2
-        radius = 6371000  # Earth radius in meters
+        radius = 6371000
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return radius * c
 
     def calculate_heading_difference(self, current_heading, target_heading):
-        # Calculate the shortest path between current and target headings
         difference = target_heading - current_heading
         if difference > 180:
             difference -= 360
@@ -196,8 +195,7 @@ class AutonomousPiCar:
         return difference
 
     def is_target_reached(self, current_lat, current_lon):
-        # Check if the target is reached within a small threshold
-        return self.calculate_proximity(current_lat, current_lon) < 0.0001  # Adjust threshold as needed
+        return self.calculate_proximity(current_lat, current_lon) < 0.0001
 
     def stop(self):
         self.stop_event.set()
@@ -207,12 +205,21 @@ class AutonomousPiCar:
             self.navigate_obstacles_thread.join()
         if self.navigation_thread.is_alive():
             self.navigation_thread.join()
-        print("Robot completely stopped.")
+        logging.info("Robot completely stopped.")
 
+def setup_signal_handlers(car):
+    def handle_signal(signum, frame):
+        logging.info(f"Signal {signum} received, stopping car...")
+        car.stop()
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
 # Example Usage
-target_latitude = 62.878800
-target_longitude = 27.637387
-us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
-robot = Robot(config)
-autonomous_car = AutonomousPiCar(target_latitude, target_longitude, robot, us_sensor)
+if __name__ == "__main__":
+    target_latitude = 62.878800
+    target_longitude = 27.637387
+    us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
+    robot = Robot(config)
+    autonomous_car = AutonomousPiCar(target_latitude, target_longitude, robot, us_sensor)
+    setup_signal_handlers(autonomous_car)

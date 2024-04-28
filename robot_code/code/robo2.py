@@ -3,7 +3,7 @@ import time
 import sys
 import threading
 import signal
-import os 
+import os
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -30,9 +30,8 @@ class AutonomousPiCar:
         self.running = True
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
-        self.initialize_signals()
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
-        
+
         # Initial GPS data retrieval
         self.initialize_gps_data()
 
@@ -59,16 +58,8 @@ class AutonomousPiCar:
         self.running = False
         print("Failed to get initial GPS data after multiple attempts.")
 
-    def initialize_signals(self):
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
-
-    def signal_handler(self, signum, frame):
-        print("Signal interrupt caught, stopping all operations...")
-        self.stop()
-
     def navigate_to_target(self):
-        while self.running and not self.stop_event.is_set():
+        while not self.stop_event.is_set():
             gps_data = self.get_valid_gps_data()
             if gps_data is None:
                 print("No valid GPS data available. Waiting...")
@@ -93,7 +84,7 @@ class AutonomousPiCar:
             print(f"Initial GPS coordinates: ({self.previous_lat}, {self.previous_lon})")
             print(f"Total distance to target: {self.total_distance:.2f} meters")
 
-            while self.running and not self.stop_event.is_set():
+            while not self.stop_event.is_set():
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
                 current_heading = get_current_heading()
                 target_heading = self.calculate_heading_difference(current_lat, current_lon)
@@ -149,16 +140,14 @@ class AutonomousPiCar:
             print(f"An error occurred while navigating obstacles: {e}")
 
     def calculate_proximity(self, current_lat, current_lon):
-        # Calculate the Euclidean distance to the target for power adjustment
         return math.hypot(current_lat-self.target_lat, current_lon-self.target_lon)
-    
+
     def update_distance(self, current_lat, current_lon, previous_lat, previous_lon):
         distance_traveled = self.calculate_distance((previous_lat, previous_lon), (current_lat, current_lon))
         self.total_distance = max(0, self.total_distance - distance_traveled)
         print(f"Traveled {distance_traveled:.2f} m, Remaining distance to target: {self.total_distance:.2f} m")
 
     def calculate_motor_power(self, proximity):
-        # Adjust motor power based on proximity to target
         return max(20, 50 - int(proximity * 1000))
 
     def adjust_heading(self, current_heading, target_heading):
@@ -166,7 +155,7 @@ class AutonomousPiCar:
         turn_power = int(self.Kp * error + self.Ki * self.integral + self.Kd * (error - self.previous_error))
         self.previous_error = error
         self.integral += error
-        turn_power = max(-50, min(turn_power, 50))  # Clamp to [-50, 50]
+        turn_power = max(-50, min(turn_power, 50))
         print(f"Adjusting heading by {turn_power} degrees")
         with self.lock:
             if turn_power > 0:
@@ -176,10 +165,9 @@ class AutonomousPiCar:
         time.sleep(0.5)
 
     def calculate_distance(self, point1, point2):
-        # Haversine formula to calculate distance
         lat1, lon1 = point1
         lat2, lon2 = point2
-        radius = 6371000  # Earth radius in meters
+        radius = 6371000
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat/2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) ** 2
@@ -187,7 +175,6 @@ class AutonomousPiCar:
         return radius * c
 
     def calculate_heading_difference(self, current_heading, target_heading):
-        # Calculate the shortest path between current and target headings
         difference = target_heading - current_heading
         if difference > 180:
             difference -= 360
@@ -196,8 +183,7 @@ class AutonomousPiCar:
         return difference
 
     def is_target_reached(self, current_lat, current_lon):
-        # Check if the target is reached within a small threshold
-        return self.calculate_proximity(current_lat, current_lon) < 0.0001  # Adjust threshold as needed
+        return self.calculate_proximity(current_lat, current_lon) < 0.0001
 
     def stop(self):
         self.stop_event.set()
@@ -209,10 +195,19 @@ class AutonomousPiCar:
             self.navigation_thread.join()
         print("Robot completely stopped.")
 
+def setup_signal_handlers(car):
+    def handle_signal(signum, frame):
+        print(f"Signal {signum} received, stopping car...")
+        car.stop()
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
 # Example Usage
-target_latitude = 62.878800
-target_longitude = 27.637387
-us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
-robot = Robot(config)
-autonomous_car = AutonomousPiCar(target_latitude, target_longitude, robot, us_sensor)
+if __name__ == "__main__":
+    target_latitude = 62.878800
+    target_longitude = 27.637387
+    us_sensor = Ultrasonic(Pin('D8'), Pin('D9'))
+    robot = Robot(config)
+    autonomous_car = AutonomousPiCar(target_latitude, target_longitude, robot, us_sensor)
+    setup_signal_handlers(autonomous_car)
