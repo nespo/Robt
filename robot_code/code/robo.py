@@ -38,7 +38,7 @@ class AutonomousPiCar:
     def navigate_to_target(self):
         try:
             print("Starting navigation to target...")
-            previous_lat, previous_lon = self.get_valid_gps_data()
+            previous_lat, previous_lon, _ = self.get_valid_gps_data()
 
             self.travel_path.append((previous_lat, previous_lon))
             print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
@@ -74,24 +74,15 @@ class AutonomousPiCar:
 
     def get_valid_gps_data(self):
         """Fetch GPS data, ensuring it meets validity criteria including HDOP or fix quality if available."""
-        data = get_current_gps()  # This may return 2 or 3 values
-        if len(data) == 3:
-            lat, lon, quality = data
-        elif len(data) == 2:
-            lat, lon = data
-            quality = None  # or a default quality value that you determine is acceptable
-
-        while lat is None or lon is None or not self.is_valid_gps_data(lat, lon) or (quality is not None and quality < 2):
-            time.sleep(1)  # Wait and retry if the data is not valid
+        while True:
             data = get_current_gps()
-            if len(data) == 3:
-                lat, lon, quality = data
-            elif len(data) == 2:
-                lat, lon = data
-                quality = None
+            if len(data) in [2, 3]:
+                lat, lon = data[:2]
+                quality = data[2] if len(data) == 3 else 2  # Default to quality 2 if not provided
 
-        return lat, lon, quality if quality is not None else 2  # Assuming a default quality value of 2 if not provided
-
+            if self.is_valid_gps_data(lat, lon):
+                return lat, lon, quality
+            time.sleep(1)  # Wait and retry if the data is not valid
 
     def is_valid_gps_data(self, lat, lon):
         """Validate GPS data within the standard range for latitude and longitude."""
@@ -187,8 +178,8 @@ class AutonomousPiCar:
         return math.hypot(current_lat-self.target_lat, current_lon-self.target_lon)
 
     def is_target_reached(self, current_lat, current_lon):
-        # More precise threshold for reaching the target, e.g., 5 meters approximated by degrees
-        return self.calculate_proximity(current_lat, current_lon) < 0.00005
+        # More precise threshold for reaching the target, e.g., 1 meters approximated by degrees
+        return self.calculate_proximity(current_lat, current_lon) < 0.00001
 
     def stop(self):
         """Stops the robot and all threads, ensuring a clean shutdown."""
