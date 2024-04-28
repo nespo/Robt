@@ -52,7 +52,7 @@ class NavigationSystem:
     def heuristic(self, a, b):
         return np.sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
 
-    def a_star_search(self, start, goal, grid):
+    def a_star_search(self, start, goal):
         print("Starting A* search from", start, "to", goal)
         neighbors = [(0,1), (1,0), (0,-1), (-1,0), (1,1), (-1,-1), (1,-1), (-1,1)]
         close_set = set()
@@ -61,27 +61,26 @@ class NavigationSystem:
         fscore = {start: self.heuristic(start, goal)}
         oheap = []
         heapq.heappush(oheap, (fscore[start], start))
+
         while oheap:
             current = heapq.heappop(oheap)[1]
             if current == goal:
+                path = self.reconstruct_path(came_from, current)
                 print("Path found!")
-                return self.reconstruct_path(came_from, current)
+                return path
             close_set.add(current)
             for i, j in neighbors:
                 neighbor = current[0] + i, current[1] + j
-                if not self.is_valid_position(grid, neighbor, close_set):
+                if not self.is_valid_position(neighbor, close_set):
                     continue
                 tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
-                if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
-                    continue
-                if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
+                if tentative_g_score < gscore.get(neighbor, float('inf')):
                     came_from[neighbor] = current
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
                     heapq.heappush(oheap, (fscore[neighbor], neighbor))
-                    #print(f"New path considered to: {neighbor} with total cost: {fscore[neighbor]}")
         print("No path found.")
-        return False
+        return None
 
     def is_valid_position(self, grid, pos, close_set):
         if 0 <= pos[0] < grid.shape[0] and 0 <= pos[1] < grid.shape[1]:
