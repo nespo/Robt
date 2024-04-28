@@ -52,33 +52,32 @@ class NavigationSystem:
         return grid_x, grid_y
 
     def a_star_search(self, start, goal):
-        print(f"Starting A* search from {start} to {goal}")
+        print("Starting A* search from", start, "to", goal)
+        neighbors = [(0,1), (1,0), (0,-1), (-1,0), (1,1), (-1,-1), (1,-1), (-1,1)]
         close_set = set()
         came_from = {}
         gscore = {start: 0}
         fscore = {start: self.heuristic(start, goal)}
         oheap = []
-
         heapq.heappush(oheap, (fscore[start], start))
 
         while oheap:
             current = heapq.heappop(oheap)[1]
             if current == goal:
                 path = self.reconstruct_path(came_from, current)
-                print("Path found!: {path}")
+                print("Path found!")
                 return path
-
             close_set.add(current)
-            for i, j in self.neighbors:
+            for i, j in neighbors:
                 neighbor = current[0] + i, current[1] + j
-                if 0 <= neighbor[0] < self.grid_size and 0 <= neighbor[1] < self.grid_size and neighbor not in close_set:
-                    tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
-                    if tentative_g_score < gscore.get(neighbor, float('inf')):
-                        came_from[neighbor] = current
-                        gscore[neighbor] = tentative_g_score
-                        fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
-                        heapq.heappush(oheap, (fscore[neighbor], neighbor))
-
+                if not self.is_valid_position(neighbor, close_set):
+                    continue
+                tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
+                if tentative_g_score < gscore.get(neighbor, float('inf')):
+                    came_from[neighbor] = current
+                    gscore[neighbor] = tentative_g_score
+                    fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
+                    heapq.heappush(oheap, (fscore[neighbor], neighbor))
         print("No path found.")
         return None
 
