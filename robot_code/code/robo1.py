@@ -37,20 +37,21 @@ class AutonomousPiCar:
 
     def initialize_signals(self):
         signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle SIGTERM as well
 
     def signal_handler(self, signum, frame):
-        print("Signal interrupt caught, stopping the robot...")
+        print("Signal interrupt caught, stopping all operations...")
         self.stop()
 
     def navigate_to_target(self):
         print("Starting navigation to target...")
-        previous_lat, previous_lon, _ = self.get_valid_gps_data()
-        if previous_lat is None:
+        current_lat, current_lon, _ = self.get_valid_gps_data()
+        if current_lat is None:
             print("No valid GPS data available. Navigation halted.")
             return
 
-        self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
-        print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
+        self.total_distance = self.calculate_total_distance_to_target(current_lat, current_lon)
+        print(f"Initial GPS coordinates: ({current_lat}, {current_lon})")
         print(f"Total distance to target: {self.total_distance:.2f} meters")
 
         while self.running:
@@ -84,14 +85,13 @@ class AutonomousPiCar:
             time.sleep(1)
 
     def get_valid_gps_data(self):
-        while True:
-            data = get_current_gps()
-            if data and -90 <= data[0] <= 90 and -180 <= data[1] <= 180:
-                return data[0], data[1], data[2] if len(data) > 2 else 1
-            else:
-                print("Invalid or no GPS data received.")
-                time.sleep(1)  # Retry interval
-                continue  # Ensures it retries until valid data is obtained
+        data = get_current_gps()
+        if data and -90 <= data[0] <= 90 and -180 <= data[1] <= 180:
+            return data[0], data[1], data[2] if len(data) > 2 else 1
+        else:
+            print("Invalid or no GPS data received. Retrying...")
+            time.sleep(1)  # Retry interval
+            return self.get_valid_gps_data()  # Recursion to ensure valid data
 
     def navigate_obstacles(self):
         while self.running:
@@ -167,7 +167,7 @@ class AutonomousPiCar:
         with self.lock:
             self.robot.stop()
         self.navigate_obstacles_thread.join()
-        print("Robot stopped.")
+        print("Robot completely stopped.")
 
 # Example Usage
 target_latitude = 62.878800
