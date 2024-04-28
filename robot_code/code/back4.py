@@ -109,24 +109,6 @@ class PIDController:
         self.previous_error = error
         return output
 
-def wait_until_turn_complete(robot, target_heading, tolerance=20):
-    pid = PIDController(kp=0.5, ki=0.1, kd=0.05)
-    current_heading = get_current_heading()
-    while abs(current_heading - target_heading) > tolerance:
-        error = target_heading - current_heading
-        power = max(10, min(100, abs(pid.update(error, 0.1))))
-        if error < 0:
-            robot.turn_left(power)
-            time.sleep(1)
-        else:
-            robot.turn_right(power)
-            time.sleep(1)
-        
-        current_heading = get_current_heading()
-        print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
-    print("Turn complete. Current heading:", current_heading)
-    robot.stop()
-
 
 def calculate_bearing(pointA, pointB):
     lat1, lon1 = map(math.radians, pointA)
@@ -139,8 +121,26 @@ def calculate_bearing(pointA, pointB):
     compass_bearing = (initial_bearing + 360) % 360
     return compass_bearing
 
+def wait_until_turn_complete(robot, target_heading, tolerance=20):
+    pid = PIDController(kp=0.5, ki=0.1, kd=0.05)
+    current_heading = get_current_heading()
+    while abs(current_heading - target_heading) > tolerance:
+        error = target_heading - current_heading
+        power = max(10, min(100, abs(pid.update(error, 0.1))))
+        if error < 0:
+            robot.turn_left(power)
+            time.sleep(2)
+        else:
+            robot.turn_right(power)
+            time.sleep(2)
+        current_heading = get_current_heading()
+        print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
+    print("Turn complete. Current heading:", current_heading)
+    robot.stop()
+
 def dynamic_navigation(nav_system, robot):
     try:
+        tolerance = 20
         start_lat, start_lon = get_current_gps()
         goal_lat, goal_lon = 62.880338, 27.635195  # Example static goal
         nav_system.update_current_position(start_lat, start_lon)
@@ -162,31 +162,24 @@ def dynamic_navigation(nav_system, robot):
             required_bearing = calculate_bearing(current_position, next_position)
             required_turn = required_bearing - current_heading
             target_heading = (current_heading + required_turn) % 360
-            if required_turn != 0:
-                turn_power = max(0, min(100, abs(required_turn)))
-                if required_turn < 0:
-                    robot.turn_left(turn_power)
-                else:
-                    robot.turn_right(turn_power)
-                print(f"Turning towards new heading: {target_heading} with power {turn_power}")
-            wait_until_turn_complete(robot, target_heading)
+
+            if abs(required_turn) > tolerance:  # Check if the turn is needed based on tolerance
+                robot.turn_right(max(0, min(100, abs(required_turn))))  # Turning towards the new heading
+                wait_until_turn_complete(robot, target_heading, tolerance)  # Wait for turn to complete within the specified tolerance
+
             speed = min(50, 100)  # Define a mechanism to determine speed if necessary
-            robot.forward(speed)
+            robot.forward(speed)  # Continue moving forward after the turn is confirmed within tolerance
             print(f"Moving forward at speed: {speed}")
+
         print("Navigation complete.")
     except Exception as e:
         print(f"Error during navigation: {e}")
         robot.stop()
 
-
-
 def main():
     nav_system = NavigationSystem()
     robot = Robot(config)
-
     dynamic_navigation(nav_system, robot)
-
-
 
 if __name__ == "__main__":
     main()
