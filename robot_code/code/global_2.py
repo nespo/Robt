@@ -40,7 +40,6 @@ class NavigationSystem:
         except Exception as e:
             raise RuntimeError(f"Invalid UTM conversion: {e}")
 
-
     def gps_to_utm(self, lat, lon):
         utm_conversion = utm.from_latlon(lat, lon)
         return utm_conversion[0], utm_conversion[1]
@@ -64,8 +63,8 @@ class NavigationSystem:
         heapq.heappush(oheap, (fscore[start], start))
         while oheap:
             current = heapq.heappop(oheap)[1]
-            print(f"Exploring node {current} with F-score {fscore[current]}")
             if current == goal:
+                print("Path found!")
                 return self.reconstruct_path(came_from, current)
             close_set.add(current)
             for i, j in neighbors:
@@ -80,10 +79,9 @@ class NavigationSystem:
                     gscore[neighbor] = tentative_g_score
                     fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
                     heapq.heappush(oheap, (fscore[neighbor], neighbor))
-                    print(f"Neighbor {neighbor} has new tentative G-score {tentative_g_score}")
+                    print(f"New path considered to: {neighbor} with total cost: {fscore[neighbor]}")
         print("No path found.")
         return False
-
 
     def is_valid_position(self, grid, pos, close_set):
         if 0 <= pos[0] < grid.shape[0] and 0 <= pos[1] < grid.shape[1]:
@@ -98,8 +96,9 @@ class NavigationSystem:
             path.append(current)
             current = came_from[current]
         path.append(current)
+        print(f"Reconstructing path: {path}")
         return path[::-1]
-    
+
     def dynamic_update_position(self):
         while self.running:
             lat, lon = get_current_gps()
@@ -130,7 +129,6 @@ def wait_until_turn_complete(robot, target_heading, tolerance=5):
     robot.stop()
     print("Turn complete. Current heading:", current_heading)
 
-
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
     print("Dynamic navigation started.")
     nav_system.update_current_position(start_lat, start_lon)
@@ -138,6 +136,7 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
     goal_utm = nav_system.gps_to_utm(goal_lat, goal_lon)
     start_grid = nav_system.utm_to_grid(*start_utm)
     goal_grid = nav_system.utm_to_grid(*goal_utm)
+    print(f"New A* search called from grid position: {start_grid} to {goal_grid}")
     global_path = nav_system.a_star_search(start_grid, goal_grid, nav_system.grid)
     if not global_path:
         print("No global path could be planned.")
@@ -158,8 +157,11 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
                 robot.turn_left(turn_power)
             else:
                 robot.turn_right(turn_power)
+            print(f"Turning towards new heading: {target_heading} with power {turn_power}")
         wait_until_turn_complete(robot, target_heading)
-        robot.forward(min(50, 100))
+        speed = min(50, 100)  # Define a mechanism to determine speed if necessary
+        robot.forward(speed)
+        print(f"Moving forward at speed: {speed}")
     print("Navigation complete.")
 
 def calculate_bearing(pointA, pointB):
@@ -172,7 +174,6 @@ def calculate_bearing(pointA, pointB):
     initial_bearing = math.degrees(initial_bearing)
     compass_bearing = (initial_bearing + 360) % 360
     return compass_bearing
-
 
 def plot_environment(nav_system, goal_utm):
     fig, ax = plt.subplots()
@@ -201,7 +202,6 @@ def plot_environment(nav_system, goal_utm):
 
         ani = FuncAnimation(fig, update, interval=1000)
         plt.show()
-
 
 def main():
     nav_system = NavigationSystem()
