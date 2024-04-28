@@ -129,10 +129,9 @@ def wait_until_turn_complete(robot, target_heading, tolerance=20):
         power = max(10, min(100, abs(pid.update(error, 0.1))))
         if error < 0:
             robot.turn_left(power)
-            time.sleep(2)
         else:
             robot.turn_right(power)
-            time.sleep(2)
+        time.sleep(5)
         current_heading = get_current_heading()
         print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
     print("Turn complete. Current heading:", current_heading)
