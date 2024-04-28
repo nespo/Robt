@@ -174,7 +174,8 @@ def follow_path(nav_system, robot, path):
         target_heading = (current_heading + required_turn) % 360
 
         if abs(required_turn) > 20:  # Check if the turn is needed based on tolerance
-            wait_until_turn_complete(robot, target_heading, 20)  # Wait for turn to complete within the specified tolerance
+            robot.turn_left(100)
+            continue
 
         robot.forward(50)  # Define speed based on operational conditions
         print(f"Moving from {current_position} to {next_position} at speed 50")
