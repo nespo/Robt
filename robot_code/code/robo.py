@@ -18,19 +18,23 @@ class AutonomousPiCar:
         self.target_lat = target_lat
         self.target_lon = target_lon
         self.robot = robot
+        self.travel_path = []  # To store the path traveled
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
 
     def navigate_to_target(self):
         try:
             print("Starting navigation to target...")
-            current_lat, current_lon = get_current_gps()  # Obtain initial GPS coordinates
+            current_lat, current_lon = get_current_gps()
+            self.travel_path.append((current_lat, current_lon))  # Store initial position
             print(f"Initial GPS coordinates: ({current_lat}, {current_lon})")
-            while not self.is_target_reached(current_lat, current_lon):  # Now pass the required arguments
+            while not self.is_target_reached(current_lat, current_lon):
                 current_lat, current_lon = get_current_gps()
+                self.travel_path.append((current_lat, current_lon))  # Append current position to path
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
                 if self.is_target_reached(current_lat, current_lon):
                     print("Target reached!")
-                    self.stop()  # Ensure the robot stops when it reaches the destination
+                    self.print_total_distance()  # Print the total distance traveled
+                    self.stop()
                     break
 
                 current_heading = get_current_heading()
@@ -41,14 +45,34 @@ class AutonomousPiCar:
                 self.adjust_heading(current_heading, target_heading)
                 proximity = self.calculate_proximity(current_lat, current_lon)
                 print(f"Proximity to target: {proximity} degrees")
-                motor_power = max(20, 50 - int(proximity * 1000))  # Decrease power as we get closer
+                motor_power = max(20, 50 - int(proximity * 1000))
                 print(f"Setting motor power to: {motor_power}")
                 self.robot.forward(motor_power)
-                time.sleep(1)  # Short pause to allow for real-time updates
+                time.sleep(1)
         except KeyboardInterrupt:
-                print("KeyboardInterrupt caught. Stopping robot...")
-                self.stop()
+            print("KeyboardInterrupt caught. Stopping robot...")
+            self.stop()
 
+    def print_total_distance(self):
+        total_distance = 0
+        for i in range(1, len(self.travel_path)):
+            total_distance += self.calculate_distance(self.travel_path[i-1], self.travel_path[i])
+        print(f"Total distance traveled: {total_distance} meters")
+
+    def calculate_distance(self, point1, point2):
+        # Uses the haversine formula to calculate distance between two points
+        lat1, lon1 = point1
+        lat2, lon2 = point2
+        radius = 6371000  # Earth radius in meters
+
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = (math.sin(dlat/2) * math.sin(dlat/2) +
+             math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+             math.sin(dlon/2) * math.sin(dlon/2))
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        distance = radius * c
+        return distance
     def adjust_heading(self, current_heading, target_heading):
         heading_difference = self.calculate_heading_difference(current_heading, target_heading)
         print(f"Heading difference: {heading_difference} degrees")
@@ -91,7 +115,7 @@ class AutonomousPiCar:
 
     def stop(self):
         # Command to stop all motors
-        self.robot.stop(0)
+        self.robot.stop()
         print("Robot stopped.")
 
 # Example Usage
