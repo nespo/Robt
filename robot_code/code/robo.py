@@ -8,7 +8,6 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.join(script_dir, '..', '..')
 sys.path.append(os.path.abspath(parent_dir))
 
-# Import robot-specific modules
 from robot_code.code.motor_control import Robot
 from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
@@ -18,24 +17,28 @@ class AutonomousPiCar:
         self.target_lat = target_lat
         self.target_lon = target_lon
         self.robot = robot
-        self.travel_path = []  # To store the path traveled
+        self.travel_path = []
+        self.Kp = 0.5  # Proportional gain for PID controller
+        self.Ki = 0.1  # Integral gain for PID controller
+        self.Kd = 0.05  # Derivative gain for PID controller
+        self.previous_error = 0
+        self.integral = 0
+        self.total_distance = 0
         print(f"Initialized AutonomousPiCar with target coordinates: ({self.target_lat}, {self.target_lon})")
 
     def navigate_to_target(self):
+        print("Starting navigation to target...")
+        previous_lat, previous_lon = get_current_gps()
+        self.travel_path.append((previous_lat, previous_lon))
+        print(f"Initial GPS coordinates: ({previous_lat}, {previous_lon})")
+        self.total_distance = self.calculate_total_distance_to_target(previous_lat, previous_lon)
+        print(f"Total distance to target: {self.total_distance:.2f} meters")
+
         try:
-            print("Starting navigation to target...")
-            current_lat, current_lon = get_current_gps()
-            self.travel_path.append((current_lat, current_lon))  # Store initial position
-            print(f"Initial GPS coordinates: ({current_lat}, {current_lon})")
-            while not self.is_target_reached(current_lat, current_lon):
+            while not self.is_target_reached(previous_lat, previous_lon):
                 current_lat, current_lon = get_current_gps()
-                self.travel_path.append((current_lat, current_lon))  # Append current position to path
+                self.travel_path.append((current_lat, current_lon))
                 print(f"Current GPS coordinates: ({current_lat}, {current_lon})")
-                if self.is_target_reached(current_lat, current_lon):
-                    print("Target reached!")
-                    self.print_total_distance()  # Print the total distance traveled
-                    self.stop()
-                    break
 
                 current_heading = get_current_heading()
                 print(f"Current heading: {current_heading} degrees")
@@ -45,19 +48,44 @@ class AutonomousPiCar:
                 self.adjust_heading(current_heading, target_heading)
                 proximity = self.calculate_proximity(current_lat, current_lon)
                 print(f"Proximity to target: {proximity} degrees")
-                motor_power = max(20, 50 - int(proximity * 1000))
+                motor_power = self.calculate_motor_power(proximity)
                 print(f"Setting motor power to: {motor_power}")
                 self.robot.forward(motor_power)
                 time.sleep(1)
+
+                self.update_distance(current_lat, current_lon, previous_lat, previous_lon)
+                previous_lat, previous_lon = current_lat, current_lon
         except KeyboardInterrupt:
             print("KeyboardInterrupt caught. Stopping robot...")
             self.stop()
 
-    def print_total_distance(self):
-        total_distance = 0
-        for i in range(1, len(self.travel_path)):
-            total_distance += self.calculate_distance(self.travel_path[i-1], self.travel_path[i])
-        print(f"Total distance traveled: {total_distance} meters")
+    def update_distance(self, current_lat, current_lon, previous_lat, previous_lon):
+        distance_traveled = self.calculate_distance((previous_lat, previous_lon), (current_lat, current_lon))
+        self.total_distance -= distance_traveled
+        print(f"Traveled {distance_traveled:.2f} m, Remaining distance to target: {self.total_distance:.2f} m")
+
+    def calculate_motor_power(self, proximity):
+        return max(20, 50 - int(proximity * 1000))
+
+    def adjust_heading(self, current_heading, target_heading):
+        error = self.calculate_heading_difference(current_heading, target_heading)
+        self.integral += error
+        derivative = error - self.previous_error
+        turn_power = int(self.Kp * error + self.Ki * self.integral + self.Kd * derivative)
+        self.previous_error = error
+
+        if abs(turn_power) > 50:
+            turn_power = 50 * (1 if turn_power > 0 else -1)
+
+        print(f"Adjusting heading by {turn_power} degrees")
+        if turn_power > 0:
+            self.robot.turn_right(abs(turn_power))
+        else:
+            self.robot.turn_left(abs(turn_power))
+        time.sleep(0.5)
+
+    def calculate_total_distance_to_target(self, current_lat, current_lon):
+        return self.calculate_distance((current_lat, current_lon), (self.target_lat, self.target_lon))
 
     def calculate_distance(self, point1, point2):
         # Uses the haversine formula to calculate distance between two points
@@ -73,7 +101,8 @@ class AutonomousPiCar:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         distance = radius * c
         return distance
-    def adjust_heading(self, current_heading, target_heading):
+    
+    '''def adjust_heading(self, current_heading, target_heading):
         heading_difference = self.calculate_heading_difference(current_heading, target_heading)
         print(f"Heading difference: {heading_difference} degrees")
         if abs(heading_difference) > 20:  # More precise turning threshold
@@ -83,7 +112,7 @@ class AutonomousPiCar:
                 self.robot.turn_right(turn_power)
             else:
                 self.robot.turn_left(turn_power)
-            time.sleep(0.5)  # Adjust duration based on your robot's turning speed
+            time.sleep(0.5)  # Adjust duration based on your robot's turning speed'''
 
     def calculate_heading_difference(self, current_heading, target_heading):
         difference = target_heading - current_heading
