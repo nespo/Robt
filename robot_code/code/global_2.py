@@ -4,6 +4,10 @@ import utm
 import os
 import sys
 import time
+import math
+import threading
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 # Correct library import paths
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -14,10 +18,6 @@ sys.path.append(os.path.abspath(parent_dir))
 from robot_code.code.motor_control import Robot
 from robot_code.code.config import config
 from robot_code.modules.nav import get_current_gps, get_current_heading
-from robot_code.modules.ultrasonic import Ultrasonic
-from robot_code.modules.pin import Pin
-
-ultrasonic = Ultrasonic(Pin('D8'), Pin('D9'))
 
 class NavigationSystem:
     def __init__(self, grid_resolution=0.5, grid_size=2000):
@@ -29,9 +29,17 @@ class NavigationSystem:
         print("Navigation System initialized with grid size:", grid_size, "and resolution:", grid_resolution)
 
     def update_current_position(self, lat, lon):
-        self.current_utm = self.gps_to_utm(lat, lon)
-        self.grid_origin = (self.current_utm[0] - 500, self.current_utm[1] - 500)
-        print("Updated current position to:", self.current_utm)
+        if lat is None or lon is None:
+            raise ValueError("GPS signal lost")
+        try:
+            self.current_utm = self.gps_to_utm(lat, lon)
+            self.grid_origin = (self.current_utm[0] - 500, self.current_utm[1] - 500)
+            print(f"GPS coordinates received: Latitude = {lat}, Longitude = {lon}")
+            print(f"Converted to UTM coordinates: Easting = {self.current_utm[0]}, Northing = {self.current_utm[1]}")
+            print("Updated current position to:", self.current_utm)
+        except Exception as e:
+            raise RuntimeError(f"Invalid UTM conversion: {e}")
+
 
     def gps_to_utm(self, lat, lon):
         utm_conversion = utm.from_latlon(lat, lon)
@@ -40,26 +48,10 @@ class NavigationSystem:
     def utm_to_grid(self, x, y):
         grid_x = int((x - self.grid_origin[0]) / self.grid_resolution)
         grid_y = int((y - self.grid_origin[1]) / self.grid_resolution)
-        print("Converted UTM to grid:", (x, y), "->", (grid_x, grid_y))
         return grid_x, grid_y
 
     def heuristic(self, a, b):
         return np.sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
-
-    def update_obstacles(self, sensor_data):
-        print("Updating obstacles.")
-        for angle, distance in sensor_data:
-            if distance == 0:
-                continue
-            angle_rad = np.radians(angle)
-            x_obstacle = self.current_utm[0] + distance * np.cos(angle_rad)
-            y_obstacle = self.current_utm[1] + distance * np.sin(angle_rad)
-            grid_x, grid_y = self.utm_to_grid(x_obstacle, y_obstacle)
-            if 0 <= grid_x < self.grid_size and 0 <= grid_y < self.grid_size:
-                self.grid[grid_x, grid_y] = 1
-                print("Obstacle updated at grid position:", (grid_x, grid_y))
-                return True
-        return False
 
     def a_star_search(self, start, goal, grid):
         print("Starting A* search from", start, "to", goal)
@@ -69,93 +61,76 @@ class NavigationSystem:
         gscore = {start: 0}
         fscore = {start: self.heuristic(start, goal)}
         oheap = []
-
         heapq.heappush(oheap, (fscore[start], start))
-
         while oheap:
             current = heapq.heappop(oheap)[1]
+            print(f"Exploring node {current} with F-score {fscore[current]}")
             if current == goal:
-                path = []
-                while current in came_from:
-                    path.append(current)
-                    current = came_from[current]
-                path.append(current)
-                print("Path found:", path[::-1])
-                return path[::-1]
-
+                return self.reconstruct_path(came_from, current)
             close_set.add(current)
             for i, j in neighbors:
                 neighbor = current[0] + i, current[1] + j
-                if 0 <= neighbor[0] < grid.shape[0] and 0 <= neighbor[1] < grid.shape[1]:
-                    if grid[neighbor[0], neighbor[1]] == 1:
-                        continue
-                    tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
-                    if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
-                        continue
-                    if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
-                        came_from[neighbor] = current
-                        gscore[neighbor] = tentative_g_score
-                        fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
-                        heapq.heappush(oheap, (fscore[neighbor], neighbor))
+                if not self.is_valid_position(grid, neighbor, close_set):
+                    continue
+                tentative_g_score = gscore[current] + self.heuristic(current, neighbor)
+                if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+                    continue
+                if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
+                    came_from[neighbor] = current
+                    gscore[neighbor] = tentative_g_score
+                    fscore[neighbor] = tentative_g_score + self.heuristic(neighbor, goal)
+                    heapq.heappush(oheap, (fscore[neighbor], neighbor))
+                    print(f"Neighbor {neighbor} has new tentative G-score {tentative_g_score}")
         print("No path found.")
-        return False  # Return False if no path is found
+        return False
 
-def ultrasonic_data():
-    sensor_data = ultrasonic.full_scan()
-    print(f"Ultrasonic sensor data: {sensor_data}")
-    return sensor_data
 
-# VFH+ algorithm class
-class VFHPlus:
-    def __init__(self, robot_size, sector_angle, threshold):
-        self.robot_size = robot_size
-        self.sector_angle = sector_angle
-        self.threshold = threshold
-        print("VFH+ initialized with sector angle:", sector_angle, "and threshold:", threshold)
+    def is_valid_position(self, grid, pos, close_set):
+        if 0 <= pos[0] < grid.shape[0] and 0 <= pos[1] < grid.shape[1]:
+            if grid[pos[0], pos[1]] == 1:  # Assumes 1 is an obstacle
+                return False
+            return True
+        return False
 
-    def update_histogram(self, sensor_data):
-        num_sectors = int(360 / self.sector_angle)
-        histogram = np.zeros(num_sectors)
-        for angle, distance in sensor_data:
-            if distance > 0:
-                sector = int(angle / self.sector_angle) % num_sectors
-                histogram[sector] += 1 / distance
-        print(f"Histogram: {histogram}")
-        return histogram
-
-    def find_best_direction(self, histogram):
-        navigable = [i for i, val in enumerate(histogram) if val < self.threshold]
-        if not navigable:
-            print("No navigable path found.")
-            return None
-        best_sector = min(navigable, key=lambda x: abs(x - len(histogram)//2))
-        best_angle = best_sector * self.sector_angle
-        print("Best direction found from histogram:", best_angle)
-        return best_angle
+    def reconstruct_path(self, came_from, current):
+        path = []
+        while current in came_from:
+            path.append(current)
+            current = came_from[current]
+        path.append(current)
+        return path[::-1]
+    
+    def dynamic_update_position(self):
+        while self.running:
+            lat, lon = get_current_gps()
+            self.update_current_position(lat, lon)
+            time.sleep(1)  # Update every second
 
 def wait_until_turn_complete(robot, target_heading, tolerance=5):
-    """
-    Blocks execution until the robot's heading is within a certain tolerance of the target heading.
-    `tolerance` is the acceptable error in degrees.
-    """
+    Kp = 0.5
+    Ki = 0.1
+    Kd = 0.05
+    previous_error = 0
+    integral = 0
     current_heading = get_current_heading()
     while abs(current_heading - target_heading) > tolerance:
         error = target_heading - current_heading
-        power = max(10, min(100, abs(int(error * 0.5))))  # Proportional control factor
-
+        integral += error * 0.1
+        derivative = (error - previous_error) / 0.1
+        power = Kp * error + Ki * integral + Kd * derivative
+        power = max(10, min(100, abs(int(power))))
         if error < 0:
             robot.turn_left(power)
-        elif error > 0:
+        else:
             robot.turn_right(power)
-
-        time.sleep(0.1)  # Check every 100 milliseconds
+        print(f"Adjusting heading: Current = {current_heading}, Target = {target_heading}, Error = {error}")
+        time.sleep(0.1)
         current_heading = get_current_heading()
-        print(f"Adjusting heading: Current: {current_heading}, Target: {target_heading}, error we have: {error}")
-
+        previous_error = error
+    robot.stop()
     print("Turn complete. Current heading:", current_heading)
-    robot.stop()  # Stop turning once the heading is achieved
 
-# Main loop for dynamic navigation
+
 def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot):
     print("Dynamic navigation started.")
     nav_system.update_current_position(start_lat, start_lon)
@@ -163,53 +138,90 @@ def dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, rob
     goal_utm = nav_system.gps_to_utm(goal_lat, goal_lon)
     start_grid = nav_system.utm_to_grid(*start_utm)
     goal_grid = nav_system.utm_to_grid(*goal_utm)
-    
     global_path = nav_system.a_star_search(start_grid, goal_grid, nav_system.grid)
     if not global_path:
         print("No global path could be planned.")
         robot.stop()
         return
 
-    vfh = VFHPlus(robot_size=20, sector_angle=15, threshold=0.3)
-    
-    # Adjust the robot's heading based on the best navigable direction found
-    current_heading = get_current_gps()[1]
-    print("Current heading:", current_heading)
-
-    for step in global_path:
-        sensor_data = ultrasonic_data()
-        if nav_system.update_obstacles(sensor_data):
-            print("Obstacle detected, recalculating path...")
-            dynamic_navigation(nav_system, get_current_gps()[0], get_current_gps()[1], goal_lat, goal_lon, robot)
-            return  # Important to return to avoid further execution after recursion
-
-        histogram = vfh.update_histogram(sensor_data)
-        direction = vfh.find_best_direction(histogram)
-        if direction is not None:
-            required_turn = direction - current_heading
-            target_heading = (current_heading + required_turn) % 360  # Ensure the heading wraps around correctly
-            print(f"Required turn: {required_turn}, Target heading: {target_heading}")
-
+    path_in_utm = [(nav_system.grid_origin[0] + x * nav_system.grid_resolution, nav_system.grid_origin[1] + y * nav_system.grid_resolution) for x, y in global_path]
+    for i in range(len(path_in_utm) - 1):
+        current_position = path_in_utm[i]
+        next_position = path_in_utm[i+1]
+        current_heading = get_current_heading()
+        required_bearing = calculate_bearing(current_position, next_position)
+        required_turn = required_bearing - current_heading
+        target_heading = (current_heading + required_turn) % 360
+        if required_turn != 0:
+            turn_power = max(0, min(100, abs(required_turn)))
             if required_turn < 0:
-                turn_power = max(0, min(100, abs(required_turn)))
                 robot.turn_left(turn_power)
-            elif required_turn > 0:
-                turn_power = max(0, min(100, abs(required_turn)))
+            else:
                 robot.turn_right(turn_power)
+        wait_until_turn_complete(robot, target_heading)
+        robot.forward(min(50, 100))
+    print("Navigation complete.")
 
-            # Wait for the turn to complete
-            wait_until_turn_complete(robot, target_heading)
+def calculate_bearing(pointA, pointB):
+    lat1, lon1 = map(math.radians, pointA)
+    lat2, lon2 = map(math.radians, pointB)
+    diffLong = lon2 - lon1
+    x = math.sin(diffLong) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - (math.sin(lat1) * math.cos(lat2) * math.cos(diffLong))
+    initial_bearing = math.atan2(x, y)
+    initial_bearing = math.degrees(initial_bearing)
+    compass_bearing = (initial_bearing + 360) % 360
+    return compass_bearing
 
-            # Move forward after the turn is complete
-            robot.forward(min(50, 100))  # Example forward power
-        else:
-            print("No direction found, stopping robot.")
-            robot.stop()
-            break
 
-# Initial setup
-nav_system = NavigationSystem()
-start_lat, start_lon = get_current_gps()
-robot = Robot(config)
-dynamic_navigation(nav_system, start_lat, start_lon, 62.880338, 27.635195, robot)
+def plot_environment(nav_system, goal_utm):
+    fig, ax = plt.subplots()
+    ax.set_xlim(0, nav_system.grid_size)
+    ax.set_ylim(0, nav_system.grid_size)
+    start_grid = nav_system.utm_to_grid(*nav_system.current_utm)
+    goal_grid = nav_system.utm_to_grid(*goal_utm)
+    path = nav_system.a_star_search(start_grid, goal_grid, nav_system.grid)
+    
+    if path:
+        path_x, path_y = zip(*path)
+        scat_path = ax.scatter(path_x, path_y, c='blue', label='Path')
+        scat_start = ax.scatter(start_grid[0], start_grid[1], c='green', marker='o', label='Start')
+        scat_goal = ax.scatter(goal_grid[0], goal_grid[1], c='red', marker='x', label='Goal')
+        ax.legend()
 
+        def update(frame):
+            try:
+                current_grid = nav_system.utm_to_grid(*nav_system.current_utm)
+                scat_start.set_offsets([current_grid])
+                print(f"Updating plot with current position: {current_grid}")
+                fig.canvas.draw_idle()
+            except Exception as e:
+                ax.set_title(f"Error: {str(e)}", color='red')
+                print(f"Error during plot update: {e}")
+
+        ani = FuncAnimation(fig, update, interval=1000)
+        plt.show()
+
+
+def main():
+    nav_system = NavigationSystem()
+    start_lat, start_lon = get_current_gps()
+    goal_lat, goal_lon = 62.880338, 27.635195  # Static goal location
+    goal_utm = nav_system.gps_to_utm(goal_lat, goal_lon)
+    robot = Robot(config)
+    
+    # Start dynamic position update thread
+    nav_system.running = True
+    position_thread = threading.Thread(target=nav_system.dynamic_update_position)
+    position_thread.start()
+    
+    # Start dynamic navigation
+    dynamic_navigation(nav_system, start_lat, start_lon, goal_lat, goal_lon, robot)
+    plot_environment(nav_system, goal_utm)
+    
+    # Cleanup
+    nav_system.running = False
+    position_thread.join()
+
+if __name__ == "__main__":
+    main()
